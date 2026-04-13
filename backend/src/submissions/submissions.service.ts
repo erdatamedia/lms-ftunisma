@@ -1,0 +1,205 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { SubmissionStatus } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { GradeSubmissionDto } from './dto/grade-submission.dto';
+
+const safeUserSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  createdAt: true,
+  updatedAt: true,
+};
+
+@Injectable()
+export class SubmissionsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async submit(
+    assignmentId: string,
+    file: Express.Multer.File,
+    note: string | undefined,
+    currentUser: { userId: string; role: string },
+  ) {
+    if (currentUser.role !== 'STUDENT') {
+      throw new ForbiddenException('Hanya mahasiswa yang dapat submit tugas');
+    }
+
+    const student = await this.prisma.student.findUnique({
+      where: { userId: currentUser.userId },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Profil mahasiswa tidak ditemukan');
+    }
+
+    const assignment = await this.prisma.assignment.findUnique({
+      where: { id: assignmentId },
+      include: {
+        class: true,
+      },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException('Tugas tidak ditemukan');
+    }
+
+    const enrollment = await this.prisma.enrollment.findUnique({
+      where: {
+        classId_studentId: {
+          classId: assignment.classId,
+          studentId: student.id,
+        },
+      },
+    });
+
+    if (!enrollment) {
+      throw new ForbiddenException('Anda tidak terdaftar di class ini');
+    }
+
+    const existingSubmission = await this.prisma.submission.findFirst({
+      where: {
+        assignmentId,
+        studentId: student.id,
+      },
+    });
+
+    if (existingSubmission) {
+      throw new BadRequestException(
+        'Anda sudah pernah submit tugas ini. Gunakan fitur update jika nanti disediakan',
+      );
+    }
+
+    return this.prisma.submission.create({
+      data: {
+        assignmentId,
+        studentId: student.id,
+        fileName: file.originalname,
+        fileUrl: `/uploads/submissions/${file.filename}`,
+        note: note?.trim(),
+        status: SubmissionStatus.SUBMITTED,
+      },
+      include: {
+        assignment: {
+          include: {
+            class: {
+              include: {
+                course: true,
+              },
+            },
+          },
+        },
+        student: {
+          include: {
+            user: {
+              select: safeUserSelect,
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async findByAssignment(
+    assignmentId: string,
+    currentUser: { userId: string; role: string },
+  ) {
+    const assignment = await this.prisma.assignment.findUnique({
+      where: { id: assignmentId },
+      include: {
+        class: true,
+      },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException('Tugas tidak ditemukan');
+    }
+
+    await this.assertCanManageClass(assignment.classId, currentUser);
+
+    return this.prisma.submission.findMany({
+      where: { assignmentId },
+      include: {
+        student: {
+          include: {
+            user: {
+              select: safeUserSelect,
+            },
+          },
+        },
+      },
+      orderBy: [{ submittedAt: 'desc' }],
+    });
+  }
+
+  async grade(
+    submissionId: string,
+    dto: GradeSubmissionDto,
+    currentUser: { userId: string; role: string },
+  ) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { id: submissionId },
+      include: {
+        assignment: true,
+      },
+    });
+
+    if (!submission) {
+      throw new NotFoundException('Submission tidak ditemukan');
+    }
+
+    await this.assertCanManageClass(submission.assignment.classId, currentUser);
+
+    return this.prisma.submission.update({
+      where: { id: submissionId },
+      data: {
+        score: dto.score,
+        feedback: dto.feedback?.trim(),
+        status: SubmissionStatus.REVIEWED,
+      },
+      include: {
+        assignment: true,
+        student: {
+          include: {
+            user: {
+              select: safeUserSelect,
+            },
+          },
+        },
+      },
+    });
+  }
+
+  private async assertCanManageClass(
+    classId: string,
+    currentUser: { userId: string; role: string },
+  ) {
+    if (currentUser.role === 'ADMIN') return;
+
+    if (currentUser.role !== 'LECTURER') {
+      throw new ForbiddenException('Akses ditolak');
+    }
+
+    const lecturer = await this.prisma.lecturer.findUnique({
+      where: { userId: currentUser.userId },
+    });
+
+    if (!lecturer) {
+      throw new NotFoundException('Profil dosen tidak ditemukan');
+    }
+
+    const foundClass = await this.prisma.class.findUnique({
+      where: { id: classId },
+    });
+
+    if (!foundClass || foundClass.lecturerId !== lecturer.id) {
+      throw new ForbiddenException('Anda tidak punya akses ke class ini');
+    }
+  }
+}

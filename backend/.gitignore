@@ -1,0 +1,14 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+uploads/*
+!uploads/.gitkeep
+!uploads/materials/.gitkeep
+!uploads/assignments/.gitkeep
+!uploads/submissions/.gitkeep
+coverage
+pnpm-debug.log
+*.log
+.DS_Store
