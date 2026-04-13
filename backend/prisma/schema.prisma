@@ -1,0 +1,241 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  LECTURER
+  STUDENT
+}
+
+enum SemesterType {
+  GANJIL
+  GENAP
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  DROPPED
+  COMPLETED
+}
+
+enum MeetingStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum AttendanceSessionType {
+  ENTRY
+  EXIT
+}
+
+enum AttendanceStatus {
+  PRESENT
+}
+
+enum SubmissionStatus {
+  SUBMITTED
+  LATE
+  REVIEWED
+}
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         UserRole
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  student      Student?
+  lecturer     Lecturer?
+  materials    Material[]   @relation("MaterialUploader")
+  assignments  Assignment[] @relation("AssignmentCreator")
+}
+
+model Student {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  nim          String   @unique
+  studyProgram String?
+  faculty      String?
+  yearEntry    Int?
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollments  Enrollment[]
+  attendances  Attendance[]
+  submissions  Submission[]
+}
+
+model Lecturer {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  nidn       String?  @unique
+  department String?
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classes    Class[]
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  credits     Int
+  semester    Int?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  classes     Class[]
+}
+
+model Class {
+  id            String        @id @default(uuid())
+  courseId      String
+  lecturerId    String
+  className     String
+  academicYear  String
+  semesterType  SemesterType
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  course        Course        @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  lecturer      Lecturer      @relation(fields: [lecturerId], references: [id], onDelete: Restrict)
+  enrollments   Enrollment[]
+  meetings      Meeting[]
+  assignments   Assignment[]
+
+  @@unique([courseId, lecturerId, className, academicYear, semesterType])
+}
+
+model Enrollment {
+  id         String            @id @default(uuid())
+  classId    String
+  studentId  String
+  status     EnrollmentStatus  @default(ACTIVE)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  class      Class             @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student    Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, studentId])
+}
+
+model Meeting {
+  id                 String              @id @default(uuid())
+  classId            String
+  meetingNumber      Int
+  title              String
+  topic              String?
+  description        String?
+  date               DateTime
+  startTime          String?
+  endTime            String?
+  status             MeetingStatus       @default(PUBLISHED)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  class              Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
+  attendanceSessions AttendanceSession[]
+  materials          Material[]
+  assignments        Assignment[]
+
+  @@unique([classId, meetingNumber])
+}
+
+model AttendanceSession {
+  id          String                @id @default(uuid())
+  meetingId   String
+  type        AttendanceSessionType
+  qrToken     String                @unique
+  expiresAt   DateTime
+  isActive    Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  meeting     Meeting               @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  attendances Attendance[]
+}
+
+model Attendance {
+  id                  String            @id @default(uuid())
+  attendanceSessionId String
+  studentId           String
+  scannedAt           DateTime          @default(now())
+  status              AttendanceStatus  @default(PRESENT)
+  deviceInfo          String?
+  ipAddress           String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  attendanceSession   AttendanceSession @relation(fields: [attendanceSessionId], references: [id], onDelete: Cascade)
+  student             Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([attendanceSessionId, studentId])
+}
+
+model Material {
+  id           String   @id @default(uuid())
+  meetingId    String
+  title        String
+  description  String?
+  fileName     String?
+  fileUrl      String
+  mimeType     String?
+  fileSize     Int?
+  uploadedById String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  meeting      Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  uploadedBy   User     @relation("MaterialUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+}
+
+model Assignment {
+  id            String   @id @default(uuid())
+  classId        String
+  meetingId      String?
+  title          String
+  description    String?
+  dueDate        DateTime
+  attachmentName String?
+  attachmentUrl  String?
+  createdById    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  class          Class      @relation(fields: [classId], references: [id], onDelete: Cascade)
+  meeting        Meeting?   @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  createdBy      User       @relation("AssignmentCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  submissions    Submission[]
+}
+
+model Submission {
+  id             String           @id @default(uuid())
+  assignmentId   String
+  studentId      String
+  fileName       String?
+  fileUrl        String
+  note           String?
+  submittedAt    DateTime         @default(now())
+  status         SubmissionStatus @default(SUBMITTED)
+  score          Float?
+  feedback       String?
+  gradedAt       DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  assignment     Assignment       @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student        Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+}
