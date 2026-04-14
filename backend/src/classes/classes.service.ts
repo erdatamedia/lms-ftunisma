@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/auth-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
@@ -33,6 +34,7 @@ export class ClassesService {
       data: {
         courseId: dto.courseId,
         lecturerId: dto.lecturerId,
+        enrollmentCode: await this.generateEnrollmentCode(),
         className: dto.className.trim(),
         academicYear: dto.academicYear.trim(),
         semesterType: dto.semesterType,
@@ -285,5 +287,21 @@ export class ClassesService {
     }
 
     return found;
+  }
+
+  private async generateEnrollmentCode() {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const code = randomBytes(4).toString('hex').toUpperCase();
+      const existing = await this.prisma.class.findUnique({
+        where: { enrollmentCode: code },
+        select: { id: true },
+      });
+
+      if (!existing) {
+        return code;
+      }
+    }
+
+    throw new BadRequestException('Gagal membuat kode enroll unik untuk kelas');
   }
 }

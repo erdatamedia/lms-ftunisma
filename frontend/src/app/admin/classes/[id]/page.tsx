@@ -11,6 +11,7 @@ import { SectionCard } from '@/components/ui/section-card';
 import { InfoGrid } from '@/components/ui/info-grid';
 import { EmptyState } from '@/components/ui/empty-state';
 import { StatusMessage } from '@/components/ui/status-message';
+import { SimpleDataTable } from '@/components/ui/simple-data-table';
 
 export default function AdminClassDetailPage({
   params,
@@ -107,6 +108,10 @@ export default function AdminClassDetailPage({
                       value: `${item.enrollments?.length || 0} orang`,
                     },
                     {
+                      label: 'Kode Enroll',
+                      value: item.enrollmentCode || '-',
+                    },
+                    {
                       label: 'Kode Mata Kuliah',
                       value: item.course?.code || '-',
                     },
@@ -120,28 +125,58 @@ export default function AdminClassDetailPage({
                 title="Daftar Mahasiswa"
                 subtitle="Mahasiswa yang terdaftar di kelas ini."
               >
-                <div className="grid gap-3">
-                  {item?.enrollments?.map((enrollment: any) => (
-                    <div
-                      key={enrollment.id}
-                      className="rounded-xl border border-slate-200 bg-slate-50 p-4"
-                    >
-                      <p className="font-medium text-slate-900">
-                        {enrollment.student?.user?.name}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {enrollment.student?.nim}
-                      </p>
-                      <p className="text-sm text-slate-500">
-                        {enrollment.student?.user?.email}
-                      </p>
-                    </div>
-                  ))}
-
-                  {!loading && item?.enrollments?.length === 0 && (
-                    <EmptyState text="Belum ada mahasiswa." />
-                  )}
-                </div>
+                {!loading && item?.enrollments?.length === 0 ? (
+                  <EmptyState text="Belum ada mahasiswa." />
+                ) : (
+                  <SimpleDataTable<any>
+                    rows={item?.enrollments || []}
+                    searchPlaceholder="Cari nama, NIM, email, atau status enroll"
+                    emptyText="Tidak ada mahasiswa yang sesuai dengan pencarian."
+                    columns={[
+                      {
+                        key: 'student',
+                        header: 'Mahasiswa',
+                        searchableValue: (enrollment) =>
+                          `${enrollment.student?.user?.name || ''} ${enrollment.student?.nim || ''} ${enrollment.student?.user?.email || ''}`,
+                        render: (enrollment) => (
+                          <div>
+                            <p className="font-medium text-slate-900">
+                              {enrollment.student?.user?.name || '-'}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {enrollment.student?.user?.email || '-'}
+                            </p>
+                          </div>
+                        ),
+                      },
+                      {
+                        key: 'nim',
+                        header: 'NIM',
+                        searchableValue: (enrollment) =>
+                          enrollment.student?.nim || '',
+                        render: (enrollment) => enrollment.student?.nim || '-',
+                      },
+                      {
+                        key: 'program',
+                        header: 'Program Studi',
+                        searchableValue: (enrollment) =>
+                          enrollment.student?.studyProgram || '',
+                        render: (enrollment) =>
+                          enrollment.student?.studyProgram || '-',
+                      },
+                      {
+                        key: 'status',
+                        header: 'Status',
+                        searchableValue: (enrollment) => enrollment.status || '',
+                        render: (enrollment) => (
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                            {enrollment.status || '-'}
+                          </span>
+                        ),
+                      },
+                    ]}
+                  />
+                )}
               </SectionCard>
             </div>
           )}

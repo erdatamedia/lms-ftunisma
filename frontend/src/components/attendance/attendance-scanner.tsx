@@ -3,15 +3,77 @@
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { api, getApiErrorMessage } from '@/lib/api';
+import { AlertBanner } from '@/components/ui/alert-banner';
+
+type ZoomRange = {
+  min: number;
+  max: number;
+  step: number;
+};
+
+type ZoomCapability = {
+  min: number;
+  max: number;
+  step?: number;
+};
 
 export function AttendanceScanner() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [manualToken, setManualToken] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [zoomRange, setZoomRange] = useState<ZoomRange | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [zoomApplying, setZoomApplying] = useState(false);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scannerElementId = 'attendance-qr-reader';
+
+  const resetZoomState = () => {
+    setZoomRange(null);
+    setZoomLevel(1);
+    setZoomApplying(false);
+  };
+
+  const syncZoomCapability = () => {
+    try {
+      const scanner = scannerRef.current;
+      if (!scanner) return;
+
+      const capabilities = scanner.getRunningTrackCapabilities() as MediaTrackCapabilities & {
+        zoom?: ZoomCapability;
+      };
+      const settings = scanner.getRunningTrackSettings() as MediaTrackSettings & {
+        zoom?: number;
+      };
+      const zoomCapability = capabilities.zoom;
+
+      if (
+        !zoomCapability ||
+        typeof zoomCapability.min !== 'number' ||
+        typeof zoomCapability.max !== 'number'
+      ) {
+        resetZoomState();
+        return;
+      }
+
+      const step =
+        typeof zoomCapability.step === 'number' && zoomCapability.step > 0
+          ? zoomCapability.step
+          : 0.1;
+      const fallbackZoom =
+        typeof settings.zoom === 'number' ? settings.zoom : zoomCapability.min;
+
+      setZoomRange({
+        min: zoomCapability.min,
+        max: zoomCapability.max,
+        step,
+      });
+      setZoomLevel(fallbackZoom);
+    } catch {
+      resetZoomState();
+    }
+  };
 
   const submitToken = async (qrToken: string) => {
     try {
@@ -48,6 +110,21 @@ export function AttendanceScanner() {
     }
   };
 
+  const stopScanner = async () => {
+    try {
+      if (scannerRef.current) {
+        await scannerRef.current.stop();
+        scannerRef.current.clear();
+        scannerRef.current = null;
+      }
+    } catch (err) {
+      console.error('Stop scanner error:', err);
+    } finally {
+      setScanning(false);
+      resetZoomState();
+    }
+  };
+
   const startScanner = async () => {
     try {
       setError('');
@@ -74,22 +151,37 @@ export function AttendanceScanner() {
       );
 
       setScanning(true);
-    } catch (err: any) {
-      setError(err?.message || 'Gagal membuka kamera');
+      syncZoomCapability();
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : 'Gagal membuka kamera',
+      );
+      await stopScanner();
     }
   };
 
-  const stopScanner = async () => {
+  const applyZoom = async (nextZoom: number) => {
+    const scanner = scannerRef.current;
+    if (!scanner || !zoomRange) {
+      return;
+    }
+
     try {
-      if (scannerRef.current) {
-        await scannerRef.current.stop();
-        await scannerRef.current.clear();
-        scannerRef.current = null;
-      }
-    } catch (err) {
-      console.error('Stop scanner error:', err);
+      setZoomApplying(true);
+      setError('');
+      await scanner.applyVideoConstraints({
+        advanced: [
+          {
+            zoom: nextZoom,
+          } as MediaTrackConstraintSet,
+        ],
+      });
+      setZoomLevel(nextZoom);
+    } catch {
+      setError('Kamera ini tidak mendukung pengaturan zoom manual.');
+      resetZoomState();
     } finally {
-      setScanning(false);
+      setZoomApplying(false);
     }
   };
 
@@ -124,6 +216,39 @@ export function AttendanceScanner() {
         )}
       </div>
 
+      {zoomRange && scanning && (
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-900">Zoom Kamera</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Naikkan zoom agar QR di layar proyektor tetap bisa dipindai dari
+                jarak jauh.
+              </p>
+            </div>
+
+            <div className="text-sm font-medium text-slate-700">
+              {zoomLevel.toFixed(1)}x
+            </div>
+          </div>
+
+          <input
+            type="range"
+            min={zoomRange.min}
+            max={zoomRange.max}
+            step={zoomRange.step}
+            value={zoomLevel}
+            onChange={(e) => {
+              const nextZoom = Number(e.target.value);
+              setZoomLevel(nextZoom);
+              void applyZoom(nextZoom);
+            }}
+            className="mt-4 w-full"
+            disabled={zoomApplying}
+          />
+        </div>
+      )}
+
       <div
         id={scannerElementId}
         className="mt-4 max-w-md overflow-hidden rounded-lg border"
@@ -145,8 +270,20 @@ export function AttendanceScanner() {
         </button>
       </div>
 
-      {error && <p className="mt-4 text-sm text-red-500">{error}</p>}
-      {success && <p className="mt-4 text-sm text-green-600">{success}</p>}
+      {error && (
+        <div className="mt-4">
+          <AlertBanner type="error" text={error} onClose={() => setError('')} />
+        </div>
+      )}
+      {success && (
+        <div className="mt-4">
+          <AlertBanner
+            type="success"
+            text={success}
+            onClose={() => setSuccess('')}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -22,63 +22,33 @@ export class EnrollmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(classId: string, studentId: string) {
+    const foundClass = await this.getClassByIdOrThrow(classId);
+    const student = await this.getStudentByIdOrThrow(studentId);
+
+    return this.createEnrollmentRecord(foundClass.id, student.id);
+  }
+
+  async joinByCode(enrollmentCode: string, currentUser: AuthenticatedUser) {
+    if (currentUser.role !== 'STUDENT') {
+      throw new ForbiddenException('Hanya mahasiswa yang dapat bergabung kelas');
+    }
+
+    const student = await this.getStudentByUserIdOrThrow(currentUser.userId);
+    const normalizedCode = enrollmentCode.trim().toUpperCase();
+
     const foundClass = await this.prisma.class.findUnique({
-      where: { id: classId },
+      where: { enrollmentCode: normalizedCode },
     });
 
     if (!foundClass) {
-      throw new NotFoundException('Class tidak ditemukan');
+      throw new NotFoundException('Kode enroll tidak ditemukan');
     }
 
-    const student = await this.prisma.student.findUnique({
-      where: { id: studentId },
-    });
-
-    if (!student) {
-      throw new NotFoundException('Student tidak ditemukan');
+    if (!foundClass.isActive) {
+      throw new BadRequestException('Kelas ini sedang tidak aktif');
     }
 
-    const existing = await this.prisma.enrollment.findUnique({
-      where: {
-        classId_studentId: {
-          classId,
-          studentId,
-        },
-      },
-    });
-
-    if (existing) {
-      throw new BadRequestException('Mahasiswa sudah terdaftar di class ini');
-    }
-
-    return this.prisma.enrollment.create({
-      data: {
-        classId,
-        studentId,
-        status: EnrollmentStatus.ACTIVE,
-      },
-      include: {
-        class: {
-          include: {
-            course: true,
-            lecturer: {
-              include: {
-                user: {
-                  select: safeUserSelect,
-                },
-              },
-            },
-          },
-        },
-        student: {
-          include: {
-            user: {
-              select: safeUserSelect,
-            },
-          },
-        },
-      },
-    });
+    return this.createEnrollmentRecord(foundClass.id, student.id);
   }
 
   async findByClass(classId: string, currentUser: AuthenticatedUser) {
@@ -138,5 +108,85 @@ export class EnrollmentsService {
     return this.prisma.enrollment.delete({
       where: { id },
     });
+  }
+
+  private async createEnrollmentRecord(classId: string, studentId: string) {
+    const existing = await this.prisma.enrollment.findUnique({
+      where: {
+        classId_studentId: {
+          classId,
+          studentId,
+        },
+      },
+    });
+
+    if (existing) {
+      throw new BadRequestException('Mahasiswa sudah terdaftar di class ini');
+    }
+
+    return this.prisma.enrollment.create({
+      data: {
+        classId,
+        studentId,
+        status: EnrollmentStatus.ACTIVE,
+      },
+      include: {
+        class: {
+          include: {
+            course: true,
+            lecturer: {
+              include: {
+                user: {
+                  select: safeUserSelect,
+                },
+              },
+            },
+          },
+        },
+        student: {
+          include: {
+            user: {
+              select: safeUserSelect,
+            },
+          },
+        },
+      },
+    });
+  }
+
+  private async getClassByIdOrThrow(classId: string) {
+    const foundClass = await this.prisma.class.findUnique({
+      where: { id: classId },
+    });
+
+    if (!foundClass) {
+      throw new NotFoundException('Class tidak ditemukan');
+    }
+
+    return foundClass;
+  }
+
+  private async getStudentByIdOrThrow(studentId: string) {
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student tidak ditemukan');
+    }
+
+    return student;
+  }
+
+  private async getStudentByUserIdOrThrow(userId: string) {
+    const student = await this.prisma.student.findUnique({
+      where: { userId },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Profil mahasiswa tidak ditemukan');
+    }
+
+    return student;
   }
 }

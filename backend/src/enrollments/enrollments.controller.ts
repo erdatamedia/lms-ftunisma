@@ -14,6 +14,7 @@ import { AuthenticatedUser } from '../auth/auth-user.interface';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { JoinClassDto } from './dto/join-class.dto';
 import { EnrollmentsService } from './enrollments.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -25,6 +26,15 @@ export class EnrollmentsController {
   @Post('enrollments')
   create(@Body() body: { classId: string; studentId: string }) {
     return this.enrollmentsService.create(body.classId, body.studentId);
+  }
+
+  @Roles(UserRole.STUDENT)
+  @Post('enrollments/join')
+  joinByCode(
+    @Body() dto: JoinClassDto,
+    @Req() req: Request & { user: AuthenticatedUser },
+  ) {
+    return this.enrollmentsService.joinByCode(dto.enrollmentCode, req.user);
   }
 
   @Roles(UserRole.ADMIN, UserRole.LECTURER)

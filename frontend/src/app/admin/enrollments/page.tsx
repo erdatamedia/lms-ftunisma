@@ -275,6 +275,9 @@ export default function AdminEnrollmentsPage() {
                     <p className="mt-1 text-sm text-slate-500">
                       Kelas {selectedClass.className} · {selectedClass.academicYear}
                     </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Kode enroll: {selectedClass.enrollmentCode || '-'}
+                    </p>
                   </div>
                 )}
 
