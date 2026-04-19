@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 
-export function QrImage({ value }: { value: string }) {
+export function QrImage({ value, size = 'responsive' }: { value: string; size?: 'responsive' | 'small' }) {
   const [src, setSrc] = useState('');
 
   useEffect(() => {
@@ -12,8 +12,9 @@ export function QrImage({ value }: { value: string }) {
     const run = async () => {
       try {
         const dataUrl = await QRCode.toDataURL(value, {
-          width: 240,
+          width: 600,
           margin: 2,
+          color: { dark: '#0f172a', light: '#ffffff' },
         });
 
         if (mounted) {
@@ -34,14 +35,29 @@ export function QrImage({ value }: { value: string }) {
   }, [value]);
 
   if (!src) {
-    return <p className="text-sm text-slate-500">Membuat QR...</p>;
+    return (
+      <div className="flex h-48 w-full items-center justify-center rounded-xl border border-slate-200 bg-slate-50">
+        <p className="text-sm text-slate-500">Membuat QR...</p>
+      </div>
+    );
+  }
+
+  if (size === 'small') {
+    return (
+      <img
+        src={src}
+        alt="QR Attendance"
+        className="h-40 w-40 rounded-xl border border-slate-200 bg-white p-2"
+      />
+    );
   }
 
   return (
     <img
       src={src}
       alt="QR Attendance"
-      className="h-60 w-60 rounded-lg border bg-white p-2"
+      className="w-full max-w-sm rounded-xl border-2 border-slate-200 bg-white p-3 shadow-sm sm:max-w-xs"
+      style={{ imageRendering: 'pixelated' }}
     />
   );
 }
