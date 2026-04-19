@@ -213,8 +213,8 @@ export function AssignmentSection({
             </a>
             <p className="text-xs text-slate-500">
               {isReviewed
-                ? 'Submission sudah dinilai, sehingga tidak dapat diubah lagi.'
-                : 'Anda bisa mengganti catatan atau upload ulang file yang benar.'}
+                ? 'Submission sudah dinilai dan tidak dapat diubah lagi.'
+                : 'File salah diupload? Gunakan form di bawah untuk memperbarui file atau catatan submission Anda.'}
             </p>
           </div>
         )}
@@ -244,7 +244,7 @@ export function AssignmentSection({
           disabled={isReviewed}
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
         >
-          {mySubmission ? 'Update Tugas' : 'Submit Tugas'}
+          {mySubmission ? 'Update Submission' : 'Submit Tugas'}
         </button>
       </div>
     );

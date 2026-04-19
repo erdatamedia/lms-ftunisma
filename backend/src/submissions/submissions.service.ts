@@ -5,6 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { SubmissionStatus } from '@prisma/client';
+import { unlink } from 'fs/promises';
+import { join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { GradeSubmissionDto } from './dto/grade-submission.dto';
 
@@ -91,7 +93,7 @@ export class SubmissionsService {
 
     if (existingSubmission) {
       throw new BadRequestException(
-        'Anda sudah pernah submit tugas ini. Gunakan fitur update jika nanti disediakan',
+        'Anda sudah pernah submit tugas ini. Gunakan fitur "Update Submission" yang tersedia di bawah untuk mengganti file atau catatan.',
       );
     }
 
@@ -175,12 +177,23 @@ export class SubmissionsService {
       );
     }
 
+    if (file && existingSubmission.fileUrl) {
+      const oldFilePath = join(process.cwd(), existingSubmission.fileUrl);
+      await unlink(oldFilePath).catch(() => {});
+    }
+
+    const now = new Date();
+    const newStatus =
+      assignment.dueDate && now > new Date(assignment.dueDate)
+        ? SubmissionStatus.LATE
+        : SubmissionStatus.SUBMITTED;
+
     return this.prisma.submission.update({
       where: { id: existingSubmission.id },
       data: {
         note: note?.trim(),
-        submittedAt: new Date(),
-        status: SubmissionStatus.SUBMITTED,
+        submittedAt: now,
+        status: newStatus,
         ...(file
           ? {
               fileName: file.originalname,
