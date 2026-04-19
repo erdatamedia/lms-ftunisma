@@ -177,7 +177,7 @@ export function AssignmentSection({
       if (values.file) formData.append('file', values.file);
 
       if (isUpdating) {
-        await api.patch(`/assignments/${assignmentId}/submission`, formData, {
+        await api.patch(`/submissions/${mySubmission.id}`, formData, {
           headers: { Authorization: `Bearer ${token}` },
         });
       } else {
@@ -251,7 +251,16 @@ export function AssignmentSection({
         {mySubmission && !isReviewed && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
             <p className="text-sm font-medium text-amber-800">
-              File salah diupload? Gunakan form di bawah untuk memperbarui file atau catatan submission Anda.
+              Anda sudah mengumpulkan tugas ini. Isi form di bawah untuk memperbarui submission Anda.
+            </p>
+          </div>
+        )}
+
+        {/* Reviewed notice */}
+        {isReviewed && (
+          <div className="rounded-xl border border-green-200 bg-green-50 px-3 py-2.5">
+            <p className="text-sm font-medium text-green-800">
+              Submission Anda sudah dinilai oleh dosen dan tidak dapat diubah lagi.
             </p>
           </div>
         )}

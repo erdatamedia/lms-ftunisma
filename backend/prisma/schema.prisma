@@ -67,10 +67,11 @@ model Student {
   faculty      String?
   yearEntry    Int?
 
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  enrollments  Enrollment[]
-  attendances  Attendance[]
-  submissions  Submission[]
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollments    Enrollment[]
+  attendances    Attendance[]
+  submissions    Submission[]
+  submissionLogs SubmissionLog[]
 }
 
 model Lecturer {
@@ -237,6 +238,19 @@ model Submission {
 
   assignment     Assignment       @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   student        Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  logs           SubmissionLog[]
 
   @@unique([assignmentId, studentId])
+}
+
+model SubmissionLog {
+  id           String     @id @default(uuid())
+  submissionId String
+  studentId    String
+  action       String
+  note         String?
+  createdAt    DateTime   @default(now())
+
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }

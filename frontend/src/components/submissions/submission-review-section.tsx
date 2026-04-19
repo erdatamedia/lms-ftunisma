@@ -40,6 +40,9 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
   const [gradeForm, setGradeForm] = useState({ score: '', feedback: '' });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [logCounts, setLogCounts] = useState<Record<string, number>>({});
+  const [modalLogs, setModalLogs] = useState<any[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   const fetchSubmissions = async () => {
     try {
@@ -57,6 +60,24 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
       });
 
       setItems(data);
+
+      const token2 = localStorage.getItem('accessToken');
+      if (token2 && data.length > 0) {
+        const counts: Record<string, number> = {};
+        await Promise.all(
+          data.map(async (sub: any) => {
+            try {
+              const { data: logs } = await api.get(`/submissions/${sub.id}/logs`, {
+                headers: { Authorization: `Bearer ${token2}` },
+              });
+              counts[sub.id] = logs.filter((l: any) => l.action === 'UPDATED').length;
+            } catch {
+              counts[sub.id] = 0;
+            }
+          }),
+        );
+        setLogCounts(counts);
+      }
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
@@ -69,18 +90,35 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
     fetchSubmissions();
   }, [assignmentId]);
 
-  const openModal = (item: any) => {
+  const openModal = async (item: any) => {
     setModalItem(item);
     setSaveError('');
+    setModalLogs([]);
     setGradeForm({
       score: item.score !== null && item.score !== undefined ? String(item.score) : '',
       feedback: item.feedback || '',
     });
+
+    setLogsLoading(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        const { data: logs } = await api.get(`/submissions/${item.id}/logs`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setModalLogs(logs);
+      }
+    } catch {
+      setModalLogs([]);
+    } finally {
+      setLogsLoading(false);
+    }
   };
 
   const closeModal = () => {
     setModalItem(null);
     setSaveError('');
+    setModalLogs([]);
     setGradeForm({ score: '', feedback: '' });
   };
 
@@ -188,7 +226,12 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
                   {filteredItems.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50">
                       <td className="py-3 pr-4 font-medium text-slate-900">
-                        {item.student?.user?.name || '-'}
+                        <span>{item.student?.user?.name || '-'}</span>
+                        {(logCounts[item.id] ?? 0) > 0 && (
+                          <span className="ml-2 inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-medium text-orange-700">
+                            Diperbarui {logCounts[item.id]}×
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 pr-4 text-slate-500">{item.student?.nim || '-'}</td>
                       <td className="py-3 pr-4 text-slate-500">
@@ -226,9 +269,16 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-slate-900">
-                        {item.student?.user?.name || '-'}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="truncate font-medium text-slate-900">
+                          {item.student?.user?.name || '-'}
+                        </p>
+                        {(logCounts[item.id] ?? 0) > 0 && (
+                          <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-medium text-orange-700">
+                            Diperbarui {logCounts[item.id]}×
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-slate-500">{item.student?.nim || '-'}</p>
                       <p className="mt-1 text-xs text-slate-400">
                         {new Date(item.submittedAt).toLocaleString('id-ID', {
@@ -325,6 +375,42 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
                   <p className="text-sm text-slate-700">{modalItem.note}</p>
                 </div>
               )}
+
+              {/* Activity log timeline */}
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Riwayat Aktivitas
+                </p>
+                {logsLoading ? (
+                  <p className="text-xs text-slate-400">Memuat riwayat...</p>
+                ) : modalLogs.length === 0 ? (
+                  <p className="text-xs text-slate-400">Belum ada riwayat aktivitas.</p>
+                ) : (
+                  <div className="space-y-0">
+                    {modalLogs.map((log: any, idx: number) => (
+                      <div key={log.id} className="flex gap-3">
+                        <div className="flex flex-col items-center">
+                          <div className={`h-3 w-3 rounded-full border-2 ${log.action === 'SUBMITTED' ? 'border-blue-500 bg-blue-100' : 'border-orange-500 bg-orange-100'}`} />
+                          {idx < modalLogs.length - 1 && (
+                            <div className="w-0.5 flex-1 bg-slate-200" />
+                          )}
+                        </div>
+                        <div className="pb-3">
+                          <p className="text-xs font-medium text-slate-700">
+                            {log.action === 'SUBMITTED' ? 'Pertama kali mengumpulkan' : 'Memperbarui file submission'}
+                          </p>
+                          <p className="text-[11px] text-slate-400">
+                            {new Date(log.createdAt).toLocaleString('id-ID')}
+                          </p>
+                          {log.note && (
+                            <p className="mt-0.5 text-[11px] text-slate-400">{log.note}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Score */}
               <div>

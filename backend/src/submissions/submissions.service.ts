@@ -97,7 +97,7 @@ export class SubmissionsService {
       );
     }
 
-    return this.prisma.submission.create({
+    const created = await this.prisma.submission.create({
       data: {
         assignmentId,
         studentId: student.id,
@@ -108,6 +108,16 @@ export class SubmissionsService {
       },
       include: this.studentSubmissionInclude,
     });
+
+    await this.prisma.submissionLog.create({
+      data: {
+        submissionId: created.id,
+        studentId: student.id,
+        action: 'SUBMITTED',
+      },
+    });
+
+    return created;
   }
 
   async updateOwnSubmission(
@@ -202,6 +212,112 @@ export class SubmissionsService {
           : {}),
       },
       include: this.studentSubmissionInclude,
+    });
+  }
+
+  async updateById(
+    submissionId: string,
+    file: Express.Multer.File | undefined,
+    note: string | undefined,
+    currentUser: { userId: string; role: string },
+  ) {
+    if (currentUser.role !== 'STUDENT') {
+      throw new ForbiddenException('Hanya mahasiswa yang dapat memperbarui submission');
+    }
+
+    const student = await this.prisma.student.findUnique({
+      where: { userId: currentUser.userId },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Profil mahasiswa tidak ditemukan');
+    }
+
+    const submission = await this.prisma.submission.findUnique({
+      where: { id: submissionId },
+      include: { assignment: true },
+    });
+
+    if (!submission) {
+      throw new NotFoundException('Submission tidak ditemukan');
+    }
+
+    if (submission.studentId !== student.id) {
+      throw new ForbiddenException('Anda tidak punya akses ke submission ini');
+    }
+
+    if (submission.score !== null || submission.status === SubmissionStatus.REVIEWED) {
+      throw new BadRequestException(
+        'Submission sudah dinilai dan tidak dapat diperbarui lagi',
+      );
+    }
+
+    const oldFileName = submission.fileName;
+
+    if (file && submission.fileUrl) {
+      const oldFilePath = join(process.cwd(), submission.fileUrl);
+      await unlink(oldFilePath).catch(() => {});
+    }
+
+    const now = new Date();
+    const newStatus =
+      submission.assignment.dueDate && now > new Date(submission.assignment.dueDate)
+        ? SubmissionStatus.LATE
+        : SubmissionStatus.SUBMITTED;
+
+    const updated = await this.prisma.submission.update({
+      where: { id: submissionId },
+      data: {
+        note: note?.trim(),
+        submittedAt: now,
+        status: newStatus,
+        ...(file
+          ? {
+              fileName: file.originalname,
+              fileUrl: `/uploads/submissions/${file.filename}`,
+            }
+          : {}),
+      },
+      include: this.studentSubmissionInclude,
+    });
+
+    await this.prisma.submissionLog.create({
+      data: {
+        submissionId,
+        studentId: student.id,
+        action: 'UPDATED',
+        note: file && oldFileName ? `File lama: ${oldFileName}` : undefined,
+      },
+    });
+
+    return updated;
+  }
+
+  async findLogs(
+    submissionId: string,
+    currentUser: { userId: string; role: string },
+  ) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { id: submissionId },
+      include: { assignment: true },
+    });
+
+    if (!submission) {
+      throw new NotFoundException('Submission tidak ditemukan');
+    }
+
+    await this.assertCanManageClass(submission.assignment.classId, currentUser);
+
+    return this.prisma.submissionLog.findMany({
+      where: { submissionId },
+      include: {
+        student: {
+          include: {
+            user: { select: safeUserSelect },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
     });
   }
 

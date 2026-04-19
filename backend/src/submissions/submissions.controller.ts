@@ -12,6 +12,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -84,6 +85,39 @@ export class SubmissionsController {
     @Req() req: any,
   ) {
     return this.submissionsService.findByAssignment(assignmentId, req.user);
+  }
+
+  @ApiTags('submissions')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update submission by ID (student only)' })
+  @ApiConsumes('multipart/form-data')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.STUDENT)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: pdfStorage('uploads/submissions'),
+      fileFilter: pdfFileFilter,
+      limits: pdfLimits,
+    }),
+  )
+  @Patch('submissions/:id')
+  updateById(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body('note') note: string,
+    @Req() req: any,
+  ) {
+    return this.submissionsService.updateById(id, file, note, req.user);
+  }
+
+  @ApiTags('submissions')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get submission activity logs (lecturer/admin only)' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.LECTURER)
+  @Get('submissions/:id/logs')
+  findLogs(@Param('id') id: string, @Req() req: any) {
+    return this.submissionsService.findLogs(id, req.user);
   }
 
   @UseGuards(RolesGuard)
