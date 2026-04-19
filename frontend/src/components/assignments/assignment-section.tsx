@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api, getApiErrorMessage } from '@/lib/api';
+import { useAuthStore } from '@/store/auth';
 import { PdfDropzone } from '@/components/upload/pdf-dropzone';
 import { SubmissionReviewSection } from '@/components/submissions/submission-review-section';
 
@@ -50,6 +51,9 @@ export function AssignmentSection({
   canCreate = false,
   isStudent = false,
 }: AssignmentSectionProps) {
+  const currentUser = useAuthStore((state) => state.user);
+  const studentId = currentUser?.student?.id as string | undefined;
+
   const [items, setItems] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -90,9 +94,14 @@ export function AssignmentSection({
         setSubmitForms((prev) => {
           const next = { ...prev };
           filteredItems.forEach((item: any) => {
-            const mySubmission = item.submissions?.[0];
-            if (mySubmission && !next[item.id]) {
-              next[item.id] = { note: mySubmission.note || '', file: null };
+            const mySubmission = studentId
+              ? item.submissions?.find((s: any) => s.studentId === studentId)
+              : item.submissions?.[0];
+            if (mySubmission) {
+              next[item.id] = {
+                note: mySubmission.note || '',
+                file: prev[item.id]?.file ?? null,
+              };
             }
           });
           return next;
@@ -164,7 +173,9 @@ export function AssignmentSection({
 
       const values = submitForms[assignmentId] || {};
       const assignment = items.find((item) => item.id === assignmentId);
-      const mySubmission = assignment?.submissions?.[0];
+      const mySubmission = studentId
+        ? assignment?.submissions?.find((s: any) => s.studentId === studentId)
+        : assignment?.submissions?.[0];
       const isUpdating = Boolean(mySubmission);
 
       if (!isUpdating && !values.file) {
@@ -200,7 +211,9 @@ export function AssignmentSection({
   const isDeadlinePassed = (dueDate: string) => new Date() > new Date(dueDate);
 
   const renderSubmissionForm = (item: any) => {
-    const mySubmission = item.submissions?.[0];
+    const mySubmission = studentId
+      ? item.submissions?.find((s: any) => s.studentId === studentId)
+      : item.submissions?.[0];
     const submissionForm = submitForms[item.id] || {};
     const isReviewed =
       mySubmission?.score !== null &&
@@ -208,7 +221,7 @@ export function AssignmentSection({
       mySubmission?.status === 'REVIEWED';
 
     return (
-      <div className="mt-4 space-y-3 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+      <div className="mt-5 space-y-4 rounded-xl bg-white p-4 ring-1 ring-slate-200">
         {/* Existing submission info */}
         {mySubmission && (
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -276,7 +289,7 @@ export function AssignmentSection({
             />
 
             <PdfDropzone
-              label={mySubmission ? 'Ganti File Submission PDF' : 'File Submission PDF *'}
+              label={mySubmission ? 'Ganti File Submission PDF' : 'File Submission PDF'}
               file={submissionForm.file || null}
               onFileChange={(file) => handleSubmissionField(item.id, 'file', file)}
               required={!mySubmission}
@@ -295,8 +308,8 @@ export function AssignmentSection({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      <div className="flex items-center justify-between gap-4">
+    <div className="rounded-2xl border border-slate-200 bg-white">
+      <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-4 py-3">
         <div>
           <h5 className="font-semibold text-slate-900">Tugas</h5>
           <p className="text-sm text-slate-500">Daftar tugas pada class/meeting ini.</p>
@@ -315,7 +328,7 @@ export function AssignmentSection({
       {creating && canCreate && (
         <form
           onSubmit={handleCreate}
-          className="mt-4 space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4"
+          className="mx-4 mt-4 space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4"
         >
           <input
             value={title}
@@ -357,18 +370,20 @@ export function AssignmentSection({
         </form>
       )}
 
-      {loading && <p className="mt-4 text-sm text-slate-500">Loading tugas...</p>}
-      {error && <p className="mt-4 text-sm text-red-500">{error}</p>}
+      {loading && <p className="px-4 pt-4 text-sm text-slate-500">Loading tugas...</p>}
+      {error && <p className="px-4 pt-4 text-sm text-red-500">{error}</p>}
 
-      <div className="mt-4 space-y-4">
+      <div className="space-y-4 p-4">
         {items.map((item) => {
-          const mySubmission = item.submissions?.[0];
+          const mySubmission = studentId
+            ? item.submissions?.find((s: any) => s.studentId === studentId)
+            : item.submissions?.[0];
           const deadlinePassed = isDeadlinePassed(item.dueDate);
 
           return (
             <div
               key={item.id}
-              className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+              className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">

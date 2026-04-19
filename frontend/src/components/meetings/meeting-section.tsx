@@ -323,33 +323,44 @@ export function MeetingSection({
 
               {/* Accordion body */}
               {isOpen && (
-                <div className="border-t border-slate-100 px-4 py-4 sm:px-5 space-y-4">
-                  {meeting.topic && (
-                    <p className="text-sm text-slate-600">
-                      <span className="font-medium">Topik:</span> {meeting.topic}
-                    </p>
-                  )}
-                  {meeting.description && (
-                    <p className="text-sm text-slate-600">{meeting.description}</p>
+                <div className="border-t border-slate-100 px-4 py-5 sm:px-5">
+                  {/* Meeting info */}
+                  {(meeting.topic || meeting.description) && (
+                    <div className="mb-5 space-y-1.5">
+                      {meeting.topic && (
+                        <p className="text-sm text-slate-600">
+                          <span className="font-medium">Topik:</span> {meeting.topic}
+                        </p>
+                      )}
+                      {meeting.description && (
+                        <p className="text-sm text-slate-600">{meeting.description}</p>
+                      )}
+                    </div>
                   )}
 
-                  {canCreate && <AttendanceManager meetingId={meeting.id} />}
-                  {canCreate && <MeetingAttendanceReport meetingId={meeting.id} />}
+                  {canCreate && (
+                    <div className="mb-5 space-y-4">
+                      <AttendanceManager meetingId={meeting.id} />
+                      <MeetingAttendanceReport meetingId={meeting.id} />
+                    </div>
+                  )}
 
                   {isStudent && (
-                    <>
+                    <div className="mb-5 space-y-4">
                       <AttendanceScanner />
                       <MyAttendanceList meetingId={meeting.id} />
-                    </>
+                    </div>
                   )}
 
-                  <MaterialSection meetingId={meeting.id} canCreate={canCreate} />
-                  <AssignmentSection
-                    classId={classId}
-                    meetingId={meeting.id}
-                    canCreate={canCreate}
-                    isStudent={isStudent}
-                  />
+                  <div className="space-y-5">
+                    <MaterialSection meetingId={meeting.id} canCreate={canCreate} />
+                    <AssignmentSection
+                      classId={classId}
+                      meetingId={meeting.id}
+                      canCreate={canCreate}
+                      isStudent={isStudent}
+                    />
+                  </div>
                 </div>
               )}
             </div>

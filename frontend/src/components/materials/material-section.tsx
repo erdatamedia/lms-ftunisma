@@ -96,17 +96,17 @@ export function MaterialSection({
   };
 
   return (
-    <div className="rounded-lg border p-4">
-      <div className="flex items-center justify-between gap-4">
+    <div className="rounded-2xl border border-slate-200 bg-white">
+      <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-4 py-3">
         <div>
-          <h5 className="font-semibold">Materi</h5>
+          <h5 className="font-semibold text-slate-900">Materi</h5>
           <p className="text-sm text-slate-500">Materi pada meeting ini.</p>
         </div>
 
         {canCreate && (
           <button
             onClick={() => setCreating((prev) => !prev)}
-            className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white"
+            className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
           >
             {creating ? 'Tutup Form' : 'Tambah Materi'}
           </button>
@@ -114,7 +114,7 @@ export function MaterialSection({
       </div>
 
       {creating && canCreate && (
-        <form onSubmit={handleCreate} className="mt-4 space-y-4 rounded-lg border p-4">
+        <form onSubmit={handleCreate} className="mx-4 mt-4 space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -147,12 +147,12 @@ export function MaterialSection({
         </form>
       )}
 
-      {loading && <p className="mt-4 text-sm">Loading materi...</p>}
-      {error && <p className="mt-4 text-sm text-red-500">{error}</p>}
+      {loading && <p className="px-4 pt-4 text-sm text-slate-500">Loading materi...</p>}
+      {error && <p className="px-4 pt-4 text-sm text-red-500">{error}</p>}
 
-      <div className="mt-4 space-y-3">
+      <div className="space-y-3 p-4">
         {items.map((item) => (
-          <div key={item.id} className="rounded-lg border p-3">
+          <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="font-medium">{item.title}</p>
             <p className="text-sm text-slate-500">{item.description || '-'}</p>
             <a
