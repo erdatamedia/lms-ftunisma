@@ -108,6 +108,38 @@ export class AssignmentsService {
   ) {
     await this.assertCanAccessClass(classId, currentUser);
 
+    if (currentUser.role === 'STUDENT') {
+      const student = await this.prisma.student.findUnique({
+        where: { userId: currentUser.userId },
+      });
+
+      if (!student) {
+        throw new NotFoundException('Profil mahasiswa tidak ditemukan');
+      }
+
+      return this.prisma.assignment.findMany({
+        where: { classId },
+        include: {
+          createdBy: {
+            select: safeUserSelect,
+          },
+          meeting: true,
+          _count: {
+            select: {
+              submissions: true,
+            },
+          },
+          submissions: {
+            where: {
+              studentId: student.id,
+            },
+            orderBy: [{ submittedAt: 'desc' }],
+          },
+        },
+        orderBy: [{ dueDate: 'asc' }],
+      });
+    }
+
     return this.prisma.assignment.findMany({
       where: { classId },
       include: {

@@ -53,6 +53,30 @@ export class SubmissionsController {
   }
 
   @UseGuards(RolesGuard)
+  @Roles(UserRole.STUDENT)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: pdfStorage('uploads/submissions'),
+      fileFilter: pdfFileFilter,
+      limits: pdfLimits,
+    }),
+  )
+  @Patch('assignments/:assignmentId/submission')
+  updateOwnSubmission(
+    @Param('assignmentId') assignmentId: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body('note') note: string,
+    @Req() req: any,
+  ) {
+    return this.submissionsService.updateOwnSubmission(
+      assignmentId,
+      file,
+      note,
+      req.user,
+    );
+  }
+
+  @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.LECTURER)
   @Get('assignments/:assignmentId/submissions')
   findByAssignment(

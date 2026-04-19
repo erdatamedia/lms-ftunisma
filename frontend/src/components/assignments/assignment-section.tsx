@@ -51,7 +51,30 @@ export function AssignmentSection({
         },
       });
 
-      setItems(meetingId ? data.filter((item: any) => item.meetingId === meetingId) : data);
+      const filteredItems = meetingId
+        ? data.filter((item: any) => item.meetingId === meetingId)
+        : data;
+
+      setItems(filteredItems);
+
+      if (isStudent) {
+        setSubmitForms((prev) => {
+          const next = { ...prev };
+
+          filteredItems.forEach((item: any) => {
+            const mySubmission = item.submissions?.[0];
+
+            if (mySubmission && !next[item.id]) {
+              next[item.id] = {
+                note: mySubmission.note || '',
+                file: null,
+              };
+            }
+          });
+
+          return next;
+        });
+      }
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
@@ -128,30 +151,103 @@ export function AssignmentSection({
       }
 
       const values = submitForms[assignmentId] || {};
-      if (!values.file) {
+      const assignment = items.find((item) => item.id === assignmentId);
+      const mySubmission = assignment?.submissions?.[0];
+      const isUpdating = Boolean(mySubmission);
+
+      if (!isUpdating && !values.file) {
         setError('File PDF submission wajib dipilih.');
         return;
       }
 
       const formData = new FormData();
-      if (values.note) formData.append('note', values.note);
-      formData.append('file', values.file);
+      formData.append('note', values.note || '');
+      if (values.file) {
+        formData.append('file', values.file);
+      }
 
-      await api.post(`/assignments/${assignmentId}/submit`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      if (isUpdating) {
+        await api.patch(`/assignments/${assignmentId}/submission`, formData, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      } else {
+        await api.post(`/assignments/${assignmentId}/submit`, formData, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
 
       await fetchAssignments();
       setSubmitForms((prev) => ({
         ...prev,
-        [assignmentId]: { note: '', file: null },
+        [assignmentId]: { note: values.note || '', file: null },
       }));
-      alert('Tugas berhasil dikumpulkan');
+      alert(isUpdating ? 'Submission berhasil diperbarui' : 'Tugas berhasil dikumpulkan');
     } catch (err) {
       setError(getApiErrorMessage(err));
     }
+  };
+
+  const renderSubmissionForm = (item: any) => {
+    const mySubmission = item.submissions?.[0];
+    const submissionForm = submitForms[item.id] || {};
+    const isReviewed = mySubmission?.score !== null || mySubmission?.status === 'REVIEWED';
+
+    return (
+      <div className="mt-4 space-y-3 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+        {mySubmission && (
+          <div className="space-y-1 text-sm">
+            <p className="font-medium text-slate-900">
+              Submission terakhir: {new Date(mySubmission.submittedAt).toLocaleString('id-ID')}
+            </p>
+            <a
+              href={`${process.env.NEXT_PUBLIC_API_URL}${mySubmission.fileUrl}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-block text-blue-600 hover:underline"
+            >
+              {mySubmission.fileName || 'Lihat file submission'}
+            </a>
+            <p className="text-xs text-slate-500">
+              {isReviewed
+                ? 'Submission sudah dinilai, sehingga tidak dapat diubah lagi.'
+                : 'Anda bisa mengganti catatan atau upload ulang file yang benar.'}
+            </p>
+          </div>
+        )}
+
+        <textarea
+          value={submissionForm.note || ''}
+          onChange={(e) =>
+            handleSubmissionField(item.id, 'note', e.target.value)
+          }
+          className="min-h-[80px] w-full rounded-xl border border-slate-300 px-3 py-2"
+          placeholder="Catatan submission"
+          disabled={isReviewed}
+        />
+
+        <PdfDropzone
+          label={mySubmission ? 'Ganti File Submission PDF' : 'File Submission PDF'}
+          file={submissionForm.file || null}
+          onFileChange={(file) =>
+            handleSubmissionField(item.id, 'file', file)
+          }
+          required={!mySubmission}
+          disabled={isReviewed}
+        />
+
+        <button
+          onClick={() => handleSubmitAssignment(item.id)}
+          disabled={isReviewed}
+          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+        >
+          {mySubmission ? 'Update Tugas' : 'Submit Tugas'}
+        </button>
+      </div>
+    );
   };
 
   return (
@@ -253,34 +349,7 @@ export function AssignmentSection({
               </a>
             )}
 
-            {isStudent && (
-              <div className="mt-4 space-y-3 rounded-xl bg-white p-3 ring-1 ring-slate-200">
-                <textarea
-                  value={submitForms[item.id]?.note || ''}
-                  onChange={(e) =>
-                    handleSubmissionField(item.id, 'note', e.target.value)
-                  }
-                  className="min-h-[80px] w-full rounded-xl border border-slate-300 px-3 py-2"
-                  placeholder="Catatan submission"
-                />
-
-                <PdfDropzone
-                  label="File Submission PDF"
-                  file={submitForms[item.id]?.file || null}
-                  onFileChange={(file) =>
-                    handleSubmissionField(item.id, 'file', file)
-                  }
-                  required
-                />
-
-                <button
-                  onClick={() => handleSubmitAssignment(item.id)}
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-                >
-                  Submit Tugas
-                </button>
-              </div>
-            )}
+            {isStudent && renderSubmissionForm(item)}
 
             {canCreate && !isStudent && (
               <div className="mt-4">

@@ -7,6 +7,7 @@ interface PdfDropzoneProps {
   file: File | null;
   onFileChange: (file: File | null) => void;
   required?: boolean;
+  disabled?: boolean;
 }
 
 export function PdfDropzone({
@@ -14,6 +15,7 @@ export function PdfDropzone({
   file,
   onFileChange,
   required = false,
+  disabled = false,
 }: PdfDropzoneProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -49,6 +51,10 @@ export function PdfDropzone({
     e.preventDefault();
     setIsDragging(false);
 
+    if (disabled) {
+      return;
+    }
+
     const selectedFile = e.dataTransfer.files?.[0] || null;
     validateFile(selectedFile);
   };
@@ -60,18 +66,23 @@ export function PdfDropzone({
       </label>
 
       <div
-        onClick={() => inputRef.current?.click()}
+        onClick={() => {
+          if (!disabled) {
+            inputRef.current?.click();
+          }
+        }}
         onDragOver={(e) => {
+          if (disabled) return;
           e.preventDefault();
           setIsDragging(true);
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
-        className={`cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition ${
+        className={`rounded-xl border-2 border-dashed p-6 text-center transition ${
           isDragging
             ? 'border-slate-900 bg-slate-50'
             : 'border-slate-300 bg-white'
-        }`}
+        } ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
       >
         <input
           ref={inputRef}
@@ -79,6 +90,7 @@ export function PdfDropzone({
           accept="application/pdf,.pdf"
           className="hidden"
           onChange={handleInputChange}
+          disabled={disabled}
         />
 
         {file ? (
@@ -94,6 +106,7 @@ export function PdfDropzone({
                 onFileChange(null);
                 setError('');
               }}
+              disabled={disabled}
               className="mt-3 text-sm text-red-500 hover:underline"
             >
               Hapus file
