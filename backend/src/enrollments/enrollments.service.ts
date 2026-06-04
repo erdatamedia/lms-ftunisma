@@ -30,7 +30,9 @@ export class EnrollmentsService {
 
   async joinByCode(enrollmentCode: string, currentUser: AuthenticatedUser) {
     if (currentUser.role !== 'STUDENT') {
-      throw new ForbiddenException('Hanya mahasiswa yang dapat bergabung kelas');
+      throw new ForbiddenException(
+        'Hanya mahasiswa yang dapat bergabung kelas',
+      );
     }
 
     const student = await this.getStudentByUserIdOrThrow(currentUser.userId);

@@ -12,6 +12,7 @@ import { JWT_EXPIRES_IN, JWT_SECRET } from '../config/jwt.config';
     JwtModule.register({
       secret: JWT_SECRET,
       signOptions: {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         expiresIn: JWT_EXPIRES_IN as any,
       },
     }),

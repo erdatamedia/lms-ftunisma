@@ -52,6 +52,14 @@ function IconChart({ className }: { className?: string }) {
   );
 }
 
+function IconUser({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+    </svg>
+  );
+}
+
 function IconLogout({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -99,14 +107,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           { href: '/dashboard', label: 'Dashboard', shortLabel: 'Dashboard', icon: IconHome },
           { href: '/lecturer/classes', label: 'Kelas Saya', shortLabel: 'Kelas', icon: IconBook },
           { href: '/lecturer/classes', label: 'Progress Kelas', shortLabel: 'Progress', icon: IconChart },
+          { href: '/lecturer/profile', label: 'Profil Saya', shortLabel: 'Profil', icon: IconUser },
         ]
       : [
           { href: '/dashboard', label: 'Dashboard', shortLabel: 'Dashboard', icon: IconHome },
           { href: '/student/classes', label: 'Kelas Saya', shortLabel: 'Kelas', icon: IconBook },
           { href: '/student/progress', label: 'Progress Saya', shortLabel: 'Progress', icon: IconChart },
+          { href: '/student/profile', label: 'Profil Saya', shortLabel: 'Profil', icon: IconUser },
         ];
 
-  // Bottom nav: admin gets 4 items (skip Courses), others get 3
+  // Bottom nav: 4 items for all roles
   const bottomNavItems =
     user?.role === 'ADMIN'
       ? [
@@ -115,7 +125,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           { href: '/admin/users', label: 'Kelola Akun', shortLabel: 'Akun', icon: IconUsers },
           { href: '/admin/enrollments', label: 'Kelola Enroll', shortLabel: 'Enroll', icon: IconUserPlus },
         ]
-      : allNavItems.slice(0, 3);
+      : allNavItems;
 
   const roleLabel =
     user?.role === 'ADMIN' ? 'Administrator' : user?.role === 'LECTURER' ? 'Dosen' : 'Mahasiswa';
@@ -144,6 +154,15 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <div className="border-b border-slate-100 px-5 py-3">
           <p className="truncate text-xs font-semibold text-slate-800">{user?.name}</p>
           <p className="truncate text-xs text-slate-400">{user?.email}</p>
+          {(user?.role === 'STUDENT' || user?.role === 'LECTURER') && (
+            <Link
+              href={user.role === 'STUDENT' ? '/student/profile' : '/lecturer/profile'}
+              className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-800"
+            >
+              <IconUser className="h-3 w-3" />
+              Ubah Password
+            </Link>
+          )}
         </div>
 
         {/* Nav */}

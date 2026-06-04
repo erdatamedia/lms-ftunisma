@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ReportsService } from './reports.service';
+import { AuthenticatedUser } from '../auth/auth-user.interface';
 
 @UseGuards(JwtAuthGuard)
 @Controller()
@@ -13,14 +14,17 @@ export class ReportsController {
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.LECTURER)
   @Get('classes/:classId/progress')
-  getClassProgress(@Param('classId') classId: string, @Req() req: any) {
+  getClassProgress(
+    @Param('classId') classId: string,
+    @Req() req: { user: AuthenticatedUser },
+  ) {
     return this.reportsService.getClassProgress(classId, req.user);
   }
 
   @UseGuards(RolesGuard)
   @Roles(UserRole.STUDENT)
   @Get('students/me/progress')
-  getMyProgress(@Req() req: any) {
+  getMyProgress(@Req() req: { user: AuthenticatedUser }) {
     return this.reportsService.getMyProgress(req.user);
   }
 }

@@ -94,8 +94,7 @@ export default function LecturerProgressPage({
   const processedStudents = useMemo(() => {
     if (!data?.students) return [];
     const normalizedSearch = search.trim().toLowerCase();
-
-    let list = data.students.filter((s: any) => {
+    const list = data.students.filter((s: any) => {
       const name = (s.student?.user?.name || '').toLowerCase();
       const nim = (s.student?.nim || '').toLowerCase();
       if (normalizedSearch && !name.includes(normalizedSearch) && !nim.includes(normalizedSearch)) {

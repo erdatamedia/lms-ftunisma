@@ -7,6 +7,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -14,6 +15,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { AttendanceService } from './attendance.service';
 import { OpenAttendanceSessionDto } from './dto/open-attendance-session.dto';
 import { ScanAttendanceDto } from './dto/scan-attendance.dto';
+import { AuthenticatedUser } from '../auth/auth-user.interface';
 
 @UseGuards(JwtAuthGuard)
 @Controller()
@@ -26,7 +28,7 @@ export class AttendanceController {
   openSession(
     @Param('meetingId') meetingId: string,
     @Body() dto: OpenAttendanceSessionDto,
-    @Req() req: any,
+    @Req() req: Request & { user: AuthenticatedUser },
   ) {
     return this.attendanceService.openSession(meetingId, dto, req.user);
   }
@@ -34,7 +36,10 @@ export class AttendanceController {
   @UseGuards(RolesGuard)
   @Roles(UserRole.STUDENT)
   @Post('attendance/scan')
-  scan(@Body() dto: ScanAttendanceDto, @Req() req: any) {
+  scan(
+    @Body() dto: ScanAttendanceDto,
+    @Req() req: Request & { user: AuthenticatedUser },
+  ) {
     const forwardedFor = req.headers['x-forwarded-for'];
     const ipAddress = Array.isArray(forwardedFor)
       ? forwardedFor[0]
@@ -48,7 +53,10 @@ export class AttendanceController {
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.LECTURER)
   @Get('meetings/:meetingId/attendance')
-  getMeetingAttendance(@Param('meetingId') meetingId: string, @Req() req: any) {
+  getMeetingAttendance(
+    @Param('meetingId') meetingId: string,
+    @Req() req: Request & { user: AuthenticatedUser },
+  ) {
     return this.attendanceService.getMeetingAttendance(meetingId, req.user);
   }
 
@@ -57,7 +65,7 @@ export class AttendanceController {
   @Get('meetings/:meetingId/my-attendance')
   getMyMeetingAttendance(
     @Param('meetingId') meetingId: string,
-    @Req() req: any,
+    @Req() req: Request & { user: AuthenticatedUser },
   ) {
     return this.attendanceService.getMyMeetingAttendance(meetingId, req.user);
   }

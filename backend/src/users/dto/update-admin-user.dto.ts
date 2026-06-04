@@ -40,7 +40,7 @@ export class UpdateAdminUserDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^[0-9A-Za-z\-\/]{4,30}$/, {
+  @Matches(/^[0-9A-Za-z/-]{4,30}$/, {
     message: 'NIM tidak valid',
   })
   nim?: string;

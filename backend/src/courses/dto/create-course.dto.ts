@@ -12,7 +12,7 @@ export class CreateCourseDto {
   @IsNotEmpty()
   @IsString()
   @MaxLength(20)
-  @Matches(/^[A-Za-z0-9\-]+$/, {
+  @Matches(/^[A-Za-z0-9-]+$/, {
     message: 'Kode course hanya boleh huruf, angka, dan tanda -',
   })
   code: string;

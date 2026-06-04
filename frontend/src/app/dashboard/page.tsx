@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { api, getApiErrorMessage } from '@/lib/api';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { DashboardShell } from '@/components/layout/dashboard-shell';
@@ -88,7 +89,8 @@ function AttendanceBar({ entry, exit, total }: { entry: number; exit: number; to
 }
 
 export default function DashboardPage() {
-  const { user } = useAuthStore();
+  const router = useRouter();
+  const { user, isHydrated, clearAuth } = useAuthStore();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -101,22 +103,23 @@ export default function DashboardPage() {
   const [lecturerClasses, setLecturerClasses] = useState<any[]>([]);
   const [studentProgress, setStudentProgress] = useState<any>(null);
 
-  const getToken = () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) throw new Error('Token tidak ditemukan. Silakan login ulang.');
-    return token;
-  };
-
   useEffect(() => {
+    if (!isHydrated || !user) return;
+
     const run = async () => {
       try {
         setLoading(true);
         setError('');
 
-        const token = getToken();
+        const token = localStorage.getItem('accessToken');
+        if (!token) {
+          clearAuth();
+          router.replace('/login');
+          return;
+        }
         const headers = { Authorization: `Bearer ${token}` };
 
-        if (user?.role === 'ADMIN') {
+        if (user.role === 'ADMIN') {
           const [classesRes, coursesRes, lecturersRes, studentsRes] = await Promise.all([
             api.get('/classes', { headers }),
             api.get('/courses', { headers }),
@@ -131,24 +134,29 @@ export default function DashboardPage() {
           });
         }
 
-        if (user?.role === 'LECTURER') {
+        if (user.role === 'LECTURER') {
           const classesRes = await api.get('/classes', { headers });
           setLecturerClasses(classesRes.data);
         }
 
-        if (user?.role === 'STUDENT') {
+        if (user.role === 'STUDENT') {
           const progressRes = await api.get('/students/me/progress', { headers });
           setStudentProgress(progressRes.data);
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.response?.status === 401) {
+          clearAuth();
+          router.replace('/login');
+          return;
+        }
         setError(getApiErrorMessage(err));
       } finally {
         setLoading(false);
       }
     };
 
-    if (user) run();
-  }, [user]);
+    run();
+  }, [user, isHydrated]);
 
   const adminSummary = useMemo(() => {
     const activeClasses = adminData.classes.filter((item) => item.isActive).length;

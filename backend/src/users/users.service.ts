@@ -8,6 +8,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from '../auth/dto/register.dto';
 import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 const safeUserSelect = {
   id: true,
@@ -354,6 +355,23 @@ export class UsersService {
     });
 
     return { message: 'Akun mahasiswa berhasil dihapus' };
+  }
+
+  async resetPassword(userId: string, dto: ResetPasswordDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new NotFoundException('User tidak ditemukan');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    return { message: 'Password berhasil direset' };
   }
 
   async assertStudentNimAvailable(nim: string, excludeStudentId?: string) {

@@ -20,10 +20,10 @@ export function getAuthHeaders() {
     : {};
 }
 
-export function getApiErrorMessage(error: any): string {
-  if (error?.response?.data?.message) {
-    const message = error.response.data.message;
-    return Array.isArray(message) ? message.join(', ') : message;
+export function getApiErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error) && error.response?.data?.message) {
+    const message = error.response.data.message as unknown;
+    return Array.isArray(message) ? message.join(', ') : String(message);
   }
-  return error?.message || 'Terjadi kesalahan';
+  return error instanceof Error ? error.message : 'Terjadi kesalahan';
 }

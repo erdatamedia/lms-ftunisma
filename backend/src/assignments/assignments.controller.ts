@@ -22,6 +22,7 @@ import {
 } from '../common/upload/pdf-upload.util';
 import { AssignmentsService } from './assignments.service';
 import { CreateAssignmentDto } from './dto/create-assignment.dto';
+import { AuthenticatedUser } from '../auth/auth-user.interface';
 
 @UseGuards(JwtAuthGuard)
 @Controller()
@@ -42,25 +43,28 @@ export class AssignmentsController {
     @Param('classId') classId: string,
     @Body() dto: CreateAssignmentDto,
     @UploadedFile() file: Express.Multer.File | undefined,
-    @Req() req: any,
+    @Req() req: { user: AuthenticatedUser },
   ) {
     return this.assignmentsService.create(classId, dto, file, req.user);
   }
 
   @Get('classes/:classId/assignments')
-  findByClass(@Param('classId') classId: string, @Req() req: any) {
+  findByClass(
+    @Param('classId') classId: string,
+    @Req() req: { user: AuthenticatedUser },
+  ) {
     return this.assignmentsService.findByClass(classId, req.user);
   }
 
   @Get('assignments/:id')
-  findOne(@Param('id') id: string, @Req() req: any) {
+  findOne(@Param('id') id: string, @Req() req: { user: AuthenticatedUser }) {
     return this.assignmentsService.findOne(id, req.user);
   }
 
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.LECTURER)
   @Delete('assignments/:id')
-  remove(@Param('id') id: string, @Req() req: any) {
+  remove(@Param('id') id: string, @Req() req: { user: AuthenticatedUser }) {
     return this.assignmentsService.remove(id, req.user);
   }
 }

@@ -8,11 +8,13 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { RegisterDto } from '../auth/dto/register.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
 import { UsersService } from './users.service';
 
@@ -61,6 +63,15 @@ export class UsersController {
   @Delete('students/:id')
   removeStudent(@Param('id') id: string) {
     return this.usersService.removeStudent(id);
+  }
+
+  @ApiTags('users')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reset user password by admin' })
+  @Roles(UserRole.ADMIN)
+  @Patch(':id/password')
+  resetPassword(@Param('id') id: string, @Body() dto: ResetPasswordDto) {
+    return this.usersService.resetPassword(id, dto);
   }
 
   @Roles(UserRole.ADMIN)

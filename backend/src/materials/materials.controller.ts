@@ -23,6 +23,7 @@ import {
   pdfLimits,
   pdfStorage,
 } from '../common/upload/pdf-upload.util';
+import { AuthenticatedUser } from '../auth/auth-user.interface';
 
 @UseGuards(JwtAuthGuard)
 @Controller()
@@ -43,7 +44,7 @@ export class MaterialsController {
     @Param('meetingId') meetingId: string,
     @Body() dto: CreateMaterialDto,
     @UploadedFile() file: Express.Multer.File,
-    @Req() req: any,
+    @Req() req: { user: AuthenticatedUser },
   ) {
     if (!file) {
       throw new BadRequestException('File PDF wajib diunggah');
@@ -53,19 +54,22 @@ export class MaterialsController {
   }
 
   @Get('meetings/:meetingId/materials')
-  findByMeeting(@Param('meetingId') meetingId: string, @Req() req: any) {
+  findByMeeting(
+    @Param('meetingId') meetingId: string,
+    @Req() req: { user: AuthenticatedUser },
+  ) {
     return this.materialsService.findByMeeting(meetingId, req.user);
   }
 
   @Get('materials/:id')
-  findOne(@Param('id') id: string, @Req() req: any) {
+  findOne(@Param('id') id: string, @Req() req: { user: AuthenticatedUser }) {
     return this.materialsService.findOne(id, req.user);
   }
 
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.LECTURER)
   @Delete('materials/:id')
-  remove(@Param('id') id: string, @Req() req: any) {
+  remove(@Param('id') id: string, @Req() req: { user: AuthenticatedUser }) {
     return this.materialsService.remove(id, req.user);
   }
 }

@@ -127,7 +127,9 @@ export class SubmissionsService {
     currentUser: { userId: string; role: string },
   ) {
     if (currentUser.role !== 'STUDENT') {
-      throw new ForbiddenException('Hanya mahasiswa yang dapat memperbarui submission');
+      throw new ForbiddenException(
+        'Hanya mahasiswa yang dapat memperbarui submission',
+      );
     }
 
     const student = await this.prisma.student.findUnique({
@@ -172,10 +174,15 @@ export class SubmissionsService {
     });
 
     if (!existingSubmission) {
-      throw new NotFoundException('Submission belum ada. Silakan submit tugas terlebih dahulu');
+      throw new NotFoundException(
+        'Submission belum ada. Silakan submit tugas terlebih dahulu',
+      );
     }
 
-    if (existingSubmission.score !== null || existingSubmission.status === SubmissionStatus.REVIEWED) {
+    if (
+      existingSubmission.score !== null ||
+      existingSubmission.status === SubmissionStatus.REVIEWED
+    ) {
       throw new BadRequestException(
         'Submission sudah dinilai dan tidak dapat diperbarui lagi',
       );
@@ -222,7 +229,9 @@ export class SubmissionsService {
     currentUser: { userId: string; role: string },
   ) {
     if (currentUser.role !== 'STUDENT') {
-      throw new ForbiddenException('Hanya mahasiswa yang dapat memperbarui submission');
+      throw new ForbiddenException(
+        'Hanya mahasiswa yang dapat memperbarui submission',
+      );
     }
 
     const student = await this.prisma.student.findUnique({
@@ -246,7 +255,10 @@ export class SubmissionsService {
       throw new ForbiddenException('Anda tidak punya akses ke submission ini');
     }
 
-    if (submission.score !== null || submission.status === SubmissionStatus.REVIEWED) {
+    if (
+      submission.score !== null ||
+      submission.status === SubmissionStatus.REVIEWED
+    ) {
       throw new BadRequestException(
         'Submission sudah dinilai dan tidak dapat diperbarui lagi',
       );
@@ -261,7 +273,8 @@ export class SubmissionsService {
 
     const now = new Date();
     const newStatus =
-      submission.assignment.dueDate && now > new Date(submission.assignment.dueDate)
+      submission.assignment.dueDate &&
+      now > new Date(submission.assignment.dueDate)
         ? SubmissionStatus.LATE
         : SubmissionStatus.SUBMITTED;
 

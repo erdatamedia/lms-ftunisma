@@ -23,7 +23,7 @@ export function pdfFileFilter(
 
   if (!isPdfMime || !isPdfExt) {
     return callback(
-      new BadRequestException('Hanya file PDF yang diperbolehkan') as any,
+      new BadRequestException('Hanya file PDF yang diperbolehkan'),
       false,
     );
   }

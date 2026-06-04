@@ -12,7 +12,12 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -24,6 +29,7 @@ import {
 } from '../common/upload/pdf-upload.util';
 import { GradeSubmissionDto } from './dto/grade-submission.dto';
 import { SubmissionsService } from './submissions.service';
+import { AuthenticatedUser } from '../auth/auth-user.interface';
 
 @UseGuards(JwtAuthGuard)
 @Controller()
@@ -44,7 +50,7 @@ export class SubmissionsController {
     @Param('assignmentId') assignmentId: string,
     @UploadedFile() file: Express.Multer.File,
     @Body('note') note: string,
-    @Req() req: any,
+    @Req() req: { user: AuthenticatedUser },
   ) {
     if (!file) {
       throw new BadRequestException('File PDF wajib diunggah');
@@ -67,7 +73,7 @@ export class SubmissionsController {
     @Param('assignmentId') assignmentId: string,
     @UploadedFile() file: Express.Multer.File | undefined,
     @Body('note') note: string,
-    @Req() req: any,
+    @Req() req: { user: AuthenticatedUser },
   ) {
     return this.submissionsService.updateOwnSubmission(
       assignmentId,
@@ -82,7 +88,7 @@ export class SubmissionsController {
   @Get('assignments/:assignmentId/submissions')
   findByAssignment(
     @Param('assignmentId') assignmentId: string,
-    @Req() req: any,
+    @Req() req: { user: AuthenticatedUser },
   ) {
     return this.submissionsService.findByAssignment(assignmentId, req.user);
   }
@@ -105,18 +111,20 @@ export class SubmissionsController {
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File | undefined,
     @Body('note') note: string,
-    @Req() req: any,
+    @Req() req: { user: AuthenticatedUser },
   ) {
     return this.submissionsService.updateById(id, file, note, req.user);
   }
 
   @ApiTags('submissions')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get submission activity logs (lecturer/admin only)' })
+  @ApiOperation({
+    summary: 'Get submission activity logs (lecturer/admin only)',
+  })
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.LECTURER)
   @Get('submissions/:id/logs')
-  findLogs(@Param('id') id: string, @Req() req: any) {
+  findLogs(@Param('id') id: string, @Req() req: { user: AuthenticatedUser }) {
     return this.submissionsService.findLogs(id, req.user);
   }
 
@@ -126,7 +134,7 @@ export class SubmissionsController {
   grade(
     @Param('submissionId') submissionId: string,
     @Body() dto: GradeSubmissionDto,
-    @Req() req: any,
+    @Req() req: { user: AuthenticatedUser },
   ) {
     return this.submissionsService.grade(submissionId, dto, req.user);
   }

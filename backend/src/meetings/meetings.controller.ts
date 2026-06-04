@@ -13,6 +13,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { MeetingsService } from './meetings.service';
+import { AuthenticatedUser } from '../auth/auth-user.interface';
 
 @UseGuards(JwtAuthGuard)
 @Controller()
@@ -25,18 +26,21 @@ export class MeetingsController {
   create(
     @Param('classId') classId: string,
     @Body() dto: CreateMeetingDto,
-    @Req() req: any,
+    @Req() req: { user: AuthenticatedUser },
   ) {
     return this.meetingsService.create(classId, dto, req.user);
   }
 
   @Get('classes/:classId/meetings')
-  findByClass(@Param('classId') classId: string, @Req() req: any) {
+  findByClass(
+    @Param('classId') classId: string,
+    @Req() req: { user: AuthenticatedUser },
+  ) {
     return this.meetingsService.findByClass(classId, req.user);
   }
 
   @Get('meetings/:id')
-  findOne(@Param('id') id: string, @Req() req: any) {
+  findOne(@Param('id') id: string, @Req() req: { user: AuthenticatedUser }) {
     return this.meetingsService.findOne(id, req.user);
   }
 }

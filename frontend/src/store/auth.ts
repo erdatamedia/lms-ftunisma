@@ -1,29 +1,21 @@
 import { create } from 'zustand';
-
-type AuthUser = {
-  id: string;
-  name: string;
-  email: string;
-  role: 'ADMIN' | 'LECTURER' | 'STUDENT';
-  lecturer?: any;
-  student?: any;
-} | null;
+import { AuthUser } from '../types/auth';
 
 type AuthState = {
   accessToken: string | null;
-  user: AuthUser;
+  user: AuthUser | null;
   isHydrated: boolean;
-  setAuth: (accessToken: string, user: AuthUser) => void;
+  setAuth: (accessToken: string, user: AuthUser | null) => void;
   clearAuth: () => void;
   hydrate: () => void;
 };
 
-function safeParseAuthUser(value: string | null): AuthUser {
+function safeParseAuthUser(value: string | null): AuthUser | null {
   if (!value) return null;
   if (value === 'undefined' || value === 'null') return null;
 
   try {
-    return JSON.parse(value);
+    return JSON.parse(value) as AuthUser;
   } catch {
     return null;
   }
