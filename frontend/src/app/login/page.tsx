@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, getApiErrorMessage } from '@/lib/api';
 import { isEmail } from '@/lib/validators';
@@ -27,6 +27,26 @@ export default function LoginPage() {
   const [touched, setTouched] = useState({ email: false, password: false });
   const [apiError, setApiError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
+    }
+    return 'dark';
+  });
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+  };
 
   const emailError = useMemo(() => {
     if (!form.email.trim()) return 'Email wajib diisi.';
@@ -74,30 +94,46 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-slate-100 px-4 pb-10 pt-10">
+      {/* Floating Theme Toggle */}
+      <div className="absolute top-4 right-4">
+        <button
+          onClick={toggleTheme}
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 transition shadow-sm active:scale-95"
+          type="button"
+        >
+          {theme === 'dark' ? (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m0 13.5V21M9.75 9.75l-1.5-1.5m11.25 11.25-1.5-1.5M21 12h-2.25M5.25 12H3m14.25-6.25-1.5 1.5M8.25 15.75l-1.5 1.5M12 7.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z" />
+            </svg>
+          ) : (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+            </svg>
+          )}
+        </button>
+      </div>
+
       <div className="w-full max-w-md">
         {/* Brand */}
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900">
-            <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-md">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.627 48.627 0 0 1 12 20.904a48.627 48.627 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 3.741-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">LMS UNISMA</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">LMS UNISMA</h1>
           <p className="mt-1 text-sm text-slate-500">Informatika FT Universitas Islam Malang</p>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-1 text-lg font-semibold text-slate-900">Masuk ke Akun</h2>
+          <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-white">Masuk ke Akun</h2>
           <p className="mb-6 text-sm text-slate-500">Masukkan email dan password untuk login.</p>
 
           {/* API Error */}
           {apiError && (
-            <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-              <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-              </svg>
-              <p className="text-sm text-red-700">{apiError}</p>
-              <button onClick={() => setApiError('')} className="ml-auto flex-shrink-0 text-red-400 hover:text-red-600">
+            <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/20 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+              <p className="flex-1">{apiError}</p>
+              <button onClick={() => setApiError('')} className="text-red-400 hover:text-red-600">
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                 </svg>
@@ -107,7 +143,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="space-y-4" noValidate>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Email
               </label>
               <input
@@ -128,9 +164,17 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Password
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:underline"
+                >
+                  Lupa Password?
+                </Link>
+              </div>
               <input
                 name="password"
                 type="password"
@@ -151,36 +195,22 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={submitting}
-              className={`mt-2 w-full rounded-xl py-3 text-sm font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${
-                isFormValid && !submitting
-                  ? 'bg-blue-600 hover:bg-blue-700'
-                  : 'bg-slate-400'
-              }`}
+              className="mt-2 w-full rounded-xl bg-slate-900 hover:bg-slate-800 text-white py-3 text-sm font-semibold transition active:scale-[0.98] disabled:opacity-60"
             >
-              {submitting ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Masuk...
-                </span>
-              ) : (
-                'Login'
-              )}
+              {submitting ? 'Masuk...' : 'Login'}
             </button>
           </form>
         </div>
 
         {/* Register link */}
         <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm font-medium text-slate-900">Belum punya akun mahasiswa?</p>
+          <p className="text-sm font-medium text-slate-900 dark:text-white">Belum punya akun mahasiswa?</p>
           <p className="mt-0.5 text-sm text-slate-500">
             Daftar mandiri untuk akun mahasiswa melalui halaman registrasi.
           </p>
           <Link
             href="/register"
-            className="mt-3 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+            className="mt-3 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
           >
             Daftar Mahasiswa
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">

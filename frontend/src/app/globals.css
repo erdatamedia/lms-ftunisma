@@ -2,33 +2,79 @@
 
 @import "tailwindcss";
 
-@theme {
+:root {
   --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Sleek Dark Mode (Default) */
+  --bg-app: hsl(222, 24%, 6%);
+  --bg-card: hsl(222, 20%, 10%);
+  --border-color: hsl(222, 15%, 15%);
+  --border-thick: hsl(222, 15%, 22%);
+  --text-muted: hsl(222, 10%, 48%);
+  --text-subdued: hsl(222, 10%, 60%);
+  --text-body: hsl(222, 10%, 75%);
+  --text-header: hsl(222, 10%, 85%);
+  --text-white: hsl(0, 0%, 100%);
   
-  /* Redefine base palette to sleek dark mode */
-  --color-slate-50: hsl(222, 20%, 8%);
-  --color-slate-100: hsl(222, 24%, 6%);     /* Main background */
-  --color-slate-200: hsl(222, 15%, 15%);    /* Borders */
-  --color-slate-300: hsl(222, 15%, 22%);    /* Thicker borders / input borders */
-  --color-slate-400: hsl(222, 10%, 48%);    /* Muted text / placeholder */
-  --color-slate-500: hsl(222, 10%, 60%);    /* Subdued text */
-  --color-slate-600: hsl(222, 10%, 75%);    /* Body text */
-  --color-slate-700: hsl(222, 10%, 85%);    /* Secondary text / card headers */
-  --color-slate-800: hsl(250, 95%, 62%);    /* Primary accent hover */
-  --color-slate-900: hsl(250, 95%, 68%);    /* Primary accent (glowing purple-blue) */
+  /* Glowing HSL Purple/Indigo Accent */
+  --accent: hsl(250, 95%, 68%);
+  --accent-hover: hsl(250, 95%, 62%);
+
+  /* Alert backgrounds for dark mode */
+  --alert-green-bg: hsl(142, 70%, 12%);
+  --alert-green-text: hsl(142, 75%, 45%);
+  --alert-red-bg: hsl(350, 70%, 12%);
+  --alert-red-text: hsl(350, 75%, 45%);
+}
+
+html.light {
+  /* Sleek Light Mode */
+  --bg-app: hsl(210, 40%, 98%);
+  --bg-card: hsl(0, 0%, 100%);
+  --border-color: hsl(214, 32%, 91%);
+  --border-thick: hsl(214, 32%, 85%);
+  --text-muted: hsl(215, 16%, 47%);
+  --text-subdued: hsl(215, 16%, 35%);
+  --text-body: hsl(215, 25%, 27%);
+  --text-header: hsl(222, 47%, 11%);
+  --text-white: hsl(222, 47%, 11%);
   
-  --color-white: hsl(222, 20%, 10%);        /* Cards / sidebar background */
+  /* Soft Indigo Accent */
+  --accent: hsl(250, 90%, 58%);
+  --accent-hover: hsl(250, 90%, 50%);
+
+  /* Alert backgrounds for light mode */
+  --alert-green-bg: hsl(142, 70%, 95%);
+  --alert-green-text: hsl(142, 75%, 25%);
+  --alert-red-bg: hsl(350, 70%, 95%);
+  --alert-red-text: hsl(350, 75%, 30%);
+}
+
+@theme {
+  --font-sans: var(--font-sans);
   
-  /* Overwrite indigo/blue to HSL gradients */
-  --color-indigo-600: hsl(250, 95%, 68%);
-  --color-indigo-700: hsl(250, 95%, 62%);
-  --color-blue-600: hsl(220, 95%, 60%);
+  /* Map standard colors dynamically */
+  --color-slate-50: var(--bg-app);
+  --color-slate-100: var(--bg-app);
+  --color-slate-200: var(--border-color);
+  --color-slate-300: var(--border-thick);
+  --color-slate-400: var(--text-muted);
+  --color-slate-500: var(--text-subdued);
+  --color-slate-600: var(--text-body);
+  --color-slate-700: var(--text-header);
+  --color-slate-800: var(--accent-hover);
+  --color-slate-900: var(--accent);
   
-  /* Status adjustments for dark mode */
-  --color-green-100: hsl(142, 70%, 12%);
-  --color-green-700: hsl(142, 75%, 45%);
-  --color-red-100: hsl(350, 70%, 12%);
-  --color-red-700: hsl(350, 75%, 45%);
+  --color-white: var(--bg-card);
+  
+  /* Map status dynamically */
+  --color-green-100: var(--alert-green-bg);
+  --color-green-700: var(--alert-green-text);
+  --color-red-100: var(--alert-red-bg);
+  --color-red-700: var(--alert-red-text);
+  
+  --color-indigo-600: var(--accent);
+  --color-indigo-700: var(--accent-hover);
   
   --radius-xl: 12px;
   --radius-2xl: 16px;
@@ -38,57 +84,85 @@
   --shadow-lg: 0 16px 48px 0 rgba(0, 0, 0, 0.6);
 }
 
-:root {
-  --background: hsl(222, 24%, 6%);
-  --foreground: hsl(0, 0%, 100%);
+/* Base Body Styles */
+html {
+  background-color: var(--bg-app) !important;
+  transition: background-color 0.3s ease;
 }
 
-html,
 body {
-  background-color: var(--background) !important;
-  color: var(--foreground) !important;
+  background-color: var(--bg-app) !important;
+  color: var(--text-body) !important;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Force headings to be bright white */
+/* Premium Layouting Background - Grid Texture */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(128, 128, 128, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(128, 128, 128, 0.04) 1px, transparent 1px);
+  mask-image: radial-gradient(circle at 50% 50%, black 60%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Headings dynamic colors */
 h1, h2, h3, h4, h5, h6 {
-  color: hsl(0, 0%, 100%) !important;
+  color: var(--text-white) !important;
 }
 
-/* Redesign inputs, selects, and textareas for high-end look */
+/* Input, select, textarea styling */
 input,
 textarea,
 select {
-  color: hsl(0, 0%, 100%) !important;
-  background-color: hsl(222, 20%, 12%) !important;
-  border: 1px solid hsl(222, 15%, 20%) !important;
+  color: var(--text-white) !important;
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-thick) !important;
   transition: all 0.2s ease;
 }
 
 input:focus,
 textarea:focus,
 select:focus {
-  border-color: hsl(250, 95%, 68%) !important;
-  box-shadow: 0 0 0 2px rgba(114, 96, 255, 0.15) !important;
-  background-color: hsl(222, 20%, 14%) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(114, 96, 255, 0.12) !important;
 }
 
-/* Table overrides for dark mode */
+/* Glassmorphism Classes for Layout Overhaul */
+.glass-panel {
+  background-color: rgba(17, 24, 39, 0.65) !important;
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+html.light .glass-panel {
+  background-color: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Table overrides for dark/light mode */
 thead {
-  background-color: hsl(222, 20%, 8%) !important;
+  background-color: var(--bg-app) !important;
+  opacity: 0.9;
 }
 th {
-  color: hsl(222, 10%, 65%) !important;
+  color: var(--text-muted) !important;
 }
 td {
-  color: hsl(222, 10%, 85%) !important;
+  color: var(--text-body) !important;
 }
 tr:hover {
-  background-color: hsl(222, 20%, 12%) !important;
+  background-color: var(--border-color) !important;
 }
 
-/* Micro-animations for buttons and cards */
+/* Micro-animations */
 button,
 a,
 .card-hover,
@@ -98,7 +172,6 @@ table tr {
 
 button:hover {
   transform: translateY(-1px);
-  filter: brightness(1.1);
 }
 
 button:active {
@@ -111,12 +184,12 @@ button:active {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(222, 24%, 6%);
+  background: var(--bg-app);
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(222, 15%, 22%);
+  background: var(--border-thick);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(222, 10%, 40%);
+  background: var(--text-muted);
 }

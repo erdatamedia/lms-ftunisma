@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth';
 
 function IconHome({ className }: { className?: string }) {
@@ -76,6 +77,27 @@ function IconGraduate({ className }: { className?: string }) {
   );
 }
 
+function ThemeToggle({ theme, toggleTheme }: { theme: 'dark' | 'light'; toggleTheme: () => void }) {
+  return (
+    <button
+      onClick={toggleTheme}
+      className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-200/50 hover:bg-slate-200/80 dark:bg-slate-800/50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-200 transition-all border border-slate-300/20 active:scale-95"
+      title="Ubah Tema"
+      type="button"
+    >
+      {theme === 'dark' ? (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m0 13.5V21M9.75 9.75l-1.5-1.5m11.25 11.25-1.5-1.5M21 12h-2.25M5.25 12H3m14.25-6.25-1.5 1.5M8.25 15.75l-1.5 1.5M12 7.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z" />
+        </svg>
+      ) : (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 interface NavItem {
   href: string;
   label: string;
@@ -87,6 +109,26 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, clearAuth } = useAuthStore();
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
+    }
+    return 'dark';
+  });
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+  };
 
   const handleLogout = () => {
     clearAuth();
@@ -106,7 +148,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       ? [
           { href: '/dashboard', label: 'Dashboard', shortLabel: 'Dashboard', icon: IconHome },
           { href: '/lecturer/classes', label: 'Kelas Saya', shortLabel: 'Kelas', icon: IconBook },
-          { href: '/lecturer/classes', label: 'Progress Kelas', shortLabel: 'Progress', icon: IconChart },
           { href: '/lecturer/profile', label: 'Profil Saya', shortLabel: 'Profil', icon: IconUser },
         ]
       : [
@@ -136,28 +177,28 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       : pathname.startsWith(href);
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-slate-100 transition-all duration-300">
       {/* ── Desktop Sidebar ── */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col border-r border-slate-200 bg-white">
+      <aside className="glass-panel hidden lg:fixed lg:inset-y-4 lg:left-4 lg:z-30 lg:flex lg:w-66 lg:flex-col rounded-2xl shadow-lg">
         {/* Brand */}
-        <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-5">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-900">
-            <IconGraduate className="h-4 w-4 text-white" />
+        <div className="flex h-16 items-center gap-3 border-b border-slate-200/20 px-5">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm border border-white/10 dark:bg-white dark:text-slate-950">
+            <IconGraduate className="h-4.5 w-4.5" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-slate-900">LMS UNISMA</p>
-            <p className="text-xs text-slate-500">{roleLabel}</p>
+            <p className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white leading-none">LMS UNISMA</p>
+            <p className="mt-1 text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">{roleLabel}</p>
           </div>
         </div>
 
         {/* User info */}
-        <div className="border-b border-slate-100 px-5 py-3">
-          <p className="truncate text-xs font-semibold text-slate-800">{user?.name}</p>
-          <p className="truncate text-xs text-slate-400">{user?.email}</p>
+        <div className="border-b border-slate-200/20 px-5 py-3">
+          <p className="truncate text-xs font-bold text-slate-900 dark:text-white">{user?.name}</p>
+          <p className="truncate text-[10px] font-medium text-slate-400 mt-0.5">{user?.email}</p>
           {(user?.role === 'STUDENT' || user?.role === 'LECTURER') && (
             <Link
               href={user.role === 'STUDENT' ? '/student/profile' : '/lecturer/profile'}
-              className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-800"
+              className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
               <IconUser className="h-3 w-3" />
               Ubah Password
@@ -166,7 +207,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
           {allNavItems.map((item, i) => {
             const active = isActive(item.href);
             const Icon = item.icon;
@@ -174,13 +215,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={`${item.href}-${i}`}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all ${
                   active
-                    ? 'bg-slate-900 text-white'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    ? 'bg-slate-900 text-white shadow-md dark:bg-white dark:text-slate-950 scale-[1.02]'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/30 dark:hover:bg-slate-800/30 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <Icon className="h-4 w-4 flex-shrink-0" />
+                <Icon className="h-4.5 w-4.5 flex-shrink-0" />
                 {item.label}
               </Link>
             );
@@ -188,44 +229,55 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Logout */}
-        <div className="border-t border-slate-200 p-3">
+        <div className="border-t border-slate-200/20 p-3">
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400 transition-colors"
           >
-            <IconLogout className="h-4 w-4 flex-shrink-0" />
+            <IconLogout className="h-4.5 w-4.5 flex-shrink-0" />
             Logout
           </button>
         </div>
       </aside>
 
       {/* ── Content area (offset on desktop) ── */}
-      <div className="lg:pl-64">
+      <div className="lg:pl-74 transition-all duration-300">
         {/* Mobile header */}
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+        <header className="glass-panel sticky top-0 z-20 flex items-center justify-between px-4 py-3 lg:hidden">
           <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-slate-900">
-              <IconGraduate className="h-3.5 w-3.5 text-white" />
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm">
+              <IconGraduate className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-bold text-slate-900">LMS UNISMA</p>
-              <p className="max-w-[160px] truncate text-xs text-slate-500">{user?.name}</p>
+              <p className="text-xs font-extrabold text-slate-900 dark:text-white leading-none">LMS UNISMA</p>
+              <p className="max-w-[140px] truncate text-[10px] text-slate-500 mt-1 font-medium">{user?.name}</p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+            <button
+              onClick={handleLogout}
+              className="rounded-xl border border-slate-300/20 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200/30 dark:hover:bg-slate-800/30 active:scale-95 transition-all"
+            >
+              Logout
+            </button>
+          </div>
         </header>
 
         {/* Desktop sub-header */}
-        <header className="sticky top-0 z-20 hidden border-b border-slate-200 bg-white/95 backdrop-blur lg:flex lg:items-center lg:justify-end lg:px-6 lg:py-3">
-          <p className="text-sm text-slate-500">
-            {user?.name} ·{' '}
-            <span className="font-semibold text-slate-800">{roleLabel}</span>
-          </p>
+        <header className="glass-panel sticky top-4 z-20 hidden lg:mx-6 lg:flex lg:h-16 lg:items-center lg:justify-between lg:rounded-2xl lg:px-6 lg:shadow-md">
+          <div className="flex items-center gap-3">
+            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Sistem LMS Aktif</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+            <div className="h-4 w-px bg-slate-200/20" />
+            <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">
+              {user?.name} ·{' '}
+              <span className="font-bold text-slate-900 dark:text-white">{roleLabel}</span>
+            </p>
+          </div>
         </header>
 
         {/* Main content */}
@@ -235,7 +287,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* ── Mobile Bottom Navigation ── */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white lg:hidden">
+      <nav className="glass-panel fixed inset-x-0 bottom-0 z-30 lg:hidden">
         <div
           className={`grid h-16 ${
             bottomNavItems.length === 4 ? 'grid-cols-4' : 'grid-cols-3'
@@ -251,14 +303,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 className="relative flex flex-col items-center justify-center gap-1"
               >
                 {active && (
-                  <span className="absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-b-full bg-slate-900" />
+                  <span className="absolute top-0 left-1/2 h-0.75 w-8 -translate-x-1/2 rounded-b-full bg-slate-900 dark:bg-white" />
                 )}
                 <Icon
-                  className={`h-5 w-5 ${active ? 'text-slate-900' : 'text-slate-400'}`}
+                  className={`h-5 w-5 ${active ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}
                 />
                 <span
-                  className={`text-[10px] font-medium leading-none ${
-                    active ? 'text-slate-900' : 'text-slate-400'
+                  className={`text-[9px] font-bold tracking-tight uppercase ${
+                    active ? 'text-slate-900 dark:text-white' : 'text-slate-400'
                   }`}
                 >
                   {item.shortLabel}

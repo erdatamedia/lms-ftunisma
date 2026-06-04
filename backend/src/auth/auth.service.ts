@@ -12,6 +12,8 @@ import { UsersService } from '../users/users.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { PublicRegisterDto } from './dto/public-register.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResetPasswordDirectDto } from './dto/reset-password-direct.dto';
 
 @Injectable()
 export class AuthService {
@@ -106,6 +108,38 @@ export class AuthService {
 
     await this.prisma.user.update({
       where: { id: userId },
+      data: { passwordHash },
+    });
+
+    return { message: 'Password berhasil diubah' };
+  }
+
+  async verifyEmail(dto: VerifyEmailDto) {
+    const user = await this.usersService.findByEmail(dto.email);
+
+    if (!user) {
+      throw new NotFoundException('Email tidak terdaftar');
+    }
+
+    return {
+      userId: user.id,
+      email: user.email,
+    };
+  }
+
+  async resetPasswordDirect(dto: ResetPasswordDirectDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: dto.userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User tidak ditemukan');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: dto.userId },
       data: { passwordHash },
     });
 
