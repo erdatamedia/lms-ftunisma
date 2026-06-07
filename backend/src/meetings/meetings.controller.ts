@@ -6,6 +6,8 @@ import {
   Post,
   Req,
   UseGuards,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -14,6 +16,12 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { MeetingsService } from './meetings.service';
 import { AuthenticatedUser } from '../auth/auth-user.interface';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  imageFileFilter,
+  imageLimits,
+  imageStorage,
+} from '../common/upload/image-upload.util';
 
 @UseGuards(JwtAuthGuard)
 @Controller()
@@ -42,5 +50,23 @@ export class MeetingsController {
   @Get('meetings/:id')
   findOne(@Param('id') id: string, @Req() req: { user: AuthenticatedUser }) {
     return this.meetingsService.findOne(id, req.user);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.LECTURER)
+  @Post('meetings/:id/thumbnail')
+  @UseInterceptors(
+    FileInterceptor('thumbnail', {
+      storage: imageStorage('./uploads/thumbnails'),
+      fileFilter: imageFileFilter,
+      limits: imageLimits,
+    }),
+  )
+  uploadThumbnail(
+    @Param('id') id: string,
+    @Req() req: { user: AuthenticatedUser },
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.meetingsService.updateThumbnail(id, file, req.user);
   }
 }

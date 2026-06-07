@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class MeetingsService {
@@ -55,6 +57,7 @@ export class MeetingsService {
         title: dto.title.trim(),
         topic: dto.topic?.trim(),
         description: dto.description?.trim(),
+        thumbnailUrl: dto.thumbnailUrl,
         date: new Date(dto.date),
         startTime: dto.startTime,
         endTime: dto.endTime,
@@ -214,5 +217,56 @@ export class MeetingsService {
     }
 
     throw new ForbiddenException('Akses ditolak');
+  }
+
+  async updateThumbnail(
+    meetingId: string,
+    file: Express.Multer.File,
+    currentUser: { userId: string; role: string },
+  ) {
+    if (!file) {
+      throw new BadRequestException('Berkas thumbnail tidak ditemukan');
+    }
+
+    const meeting = await this.prisma.meeting.findUnique({
+      where: { id: meetingId },
+    });
+
+    if (!meeting) {
+      throw new NotFoundException('Meeting tidak ditemukan');
+    }
+
+    await this.assertCanManageClass(meeting.classId, currentUser);
+
+    if (meeting.thumbnailUrl) {
+      try {
+        const oldPath = path.join(
+          process.cwd(),
+          meeting.thumbnailUrl.replace(/^\//, ''),
+        );
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      } catch {
+        // ignore errors
+      }
+    }
+
+    const thumbnailUrl = `/uploads/thumbnails/${file.filename}`;
+
+    const updatedMeeting = await this.prisma.meeting.update({
+      where: { id: meetingId },
+      data: { thumbnailUrl },
+      include: {
+        attendanceSessions: true,
+        materials: true,
+        assignments: true,
+      },
+    });
+
+    return {
+      message: 'Thumbnail meeting berhasil diperbarui',
+      meeting: updatedMeeting,
+    };
   }
 }

@@ -140,6 +140,7 @@ model Meeting {
   title              String
   topic              String?
   description        String?
+  thumbnailUrl       String?
   date               DateTime
   startTime          String?
   endTime            String?

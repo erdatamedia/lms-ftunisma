@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api, getApiErrorMessage } from '@/lib/api';
+import { api, getApiErrorMessage, API_URL } from '@/lib/api';
 import { MaterialSection } from '@/components/materials/material-section';
 import { AssignmentSection } from '@/components/assignments/assignment-section';
 import { AttendanceManager } from '@/components/attendance/attendance-manager';
@@ -56,6 +56,7 @@ export function MeetingSection({
   const [creating, setCreating] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
 
   const [form, setForm] = useState({
     meetingNumber: '',
@@ -66,6 +67,43 @@ export function MeetingSection({
     startTime: '',
     endTime: '',
   });
+
+  const handleThumbnailChange = async (meetingId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Tipe file tidak didukung. Harap pilih JPG, JPEG, PNG, atau WEBP.');
+      return;
+    }
+
+    const maxBytes = 2 * 1024 * 1024; // 2MB
+    if (file.size > maxBytes) {
+      alert('Ukuran file maksimal 2MB.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('accessToken') || '';
+      const formData = new FormData();
+      formData.append('thumbnail', file);
+
+      await api.post(`/meetings/${meetingId}/thumbnail`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      await fetchMeetings();
+    } catch (err) {
+      alert(getApiErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchMeetings = async () => {
     try {
@@ -124,7 +162,7 @@ export function MeetingSection({
         return;
       }
 
-      await api.post(
+      const response = await api.post(
         `/classes/${classId}/meetings`,
         {
           meetingNumber: Number(form.meetingNumber),
@@ -138,7 +176,21 @@ export function MeetingSection({
         { headers: { Authorization: `Bearer ${token}` } },
       );
 
+      const createdMeeting = response.data;
+
+      if (thumbnailFile) {
+        const formData = new FormData();
+        formData.append('thumbnail', thumbnailFile);
+        await api.post(`/meetings/${createdMeeting.id}/thumbnail`, formData, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      }
+
       setForm({ meetingNumber: '', title: '', topic: '', description: '', date: '', startTime: '', endTime: '' });
+      setThumbnailFile(null);
       setCreating(false);
       await fetchMeetings();
     } catch (err) {
@@ -234,6 +286,15 @@ export function MeetingSection({
                 placeholder="09:40"
               />
             </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-slate-700">Thumbnail / Cover Pertemuan (Opsional)</label>
+              <input
+                type="file"
+                accept="image/png, image/jpeg, image/jpg, image/webp"
+                onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+              />
+            </div>
           </div>
           <div className="mt-4">
             <label className="mb-1 block text-sm font-medium text-slate-700">Deskripsi</label>
@@ -259,71 +320,128 @@ export function MeetingSection({
       {error && <StatusMessage type="error" text={error} />}
 
       {/* Accordion meeting list */}
-      <div className="mt-4 space-y-3">
+      <div className="mt-6 space-y-6 pb-4">
         {items.map((meeting) => {
           const isOpen = expandedIds.has(meeting.id);
+          const gradientMap = [
+            'from-emerald-500/10 to-teal-500/20 text-emerald-600 dark:text-emerald-400',
+            'from-blue-500/10 to-indigo-500/20 text-blue-600 dark:text-blue-400',
+            'from-purple-500/10 to-pink-500/20 text-purple-600 dark:text-purple-400',
+            'from-orange-500/10 to-amber-500/20 text-orange-600 dark:text-orange-400',
+            'from-rose-500/10 to-red-500/20 text-rose-600 dark:text-rose-400',
+          ];
+          const grad = gradientMap[meeting.meetingNumber % gradientMap.length];
 
           return (
-            <div
-              key={meeting.id}
-              className="premium-card overflow-hidden rounded-2xl"
-            >
-              {/* Accordion header — always visible, clickable */}
-              <button
-                onClick={() => toggleExpand(meeting.id)}
-                className="w-full text-left"
-                type="button"
-              >
-                <div className="flex items-center gap-3 px-4 py-4 transition hover:bg-slate-50 sm:px-5">
-                  {/* Meeting number badge */}
-                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">
-                    {meeting.meetingNumber}
-                  </div>
+            <div key={meeting.id} className="relative group/stack">
+              {/* Bottom-most background card */}
+              <div className="absolute inset-x-4 -bottom-3 h-10 rounded-2xl bg-slate-200/40 dark:bg-slate-800/10 border border-slate-300/10 dark:border-slate-700/10 transition-all duration-300 group-hover/stack:-bottom-4 group-hover/stack:scale-[0.97] -z-20" />
+              {/* Middle background card */}
+              <div className="absolute inset-x-2 -bottom-1.5 h-10 rounded-2xl bg-slate-100/70 dark:bg-slate-800/40 border border-slate-300/25 dark:border-slate-700/20 transition-all duration-300 group-hover/stack:-bottom-2.5 group-hover/stack:scale-[0.985] -z-10" />
 
-                  {/* Info */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-slate-900 leading-tight">
-                        {meeting.title}
-                      </p>
-                      <MeetingStatusBadge status={meeting.status} />
-                    </div>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
-                      <span>
-                        {new Date(meeting.date).toLocaleDateString('id-ID', {
-                          weekday: 'short',
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </span>
-                      {(meeting.startTime || meeting.endTime) && (
-                        <span>
-                          {meeting.startTime || '-'} – {meeting.endTime || '-'}
-                        </span>
+              {/* Main Card */}
+              <div className="premium-card relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300">
+                {/* File Input for thumbnail */}
+                {canCreate && (
+                  <input
+                    type="file"
+                    id={`thumb-upload-${meeting.id}`}
+                    className="hidden"
+                    accept="image/png, image/jpeg, image/jpg, image/webp"
+                    onChange={(e) => handleThumbnailChange(meeting.id, e)}
+                  />
+                )}
+
+                {/* Accordion header — always visible, clickable */}
+                <button
+                  onClick={() => toggleExpand(meeting.id)}
+                  className="w-full text-left"
+                  type="button"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 px-4 py-4 transition hover:bg-slate-50/50 sm:px-5">
+                    {/* Left: Thumbnail area */}
+                    <div className="relative h-24 w-full sm:w-40 flex-shrink-0 overflow-hidden rounded-xl border border-slate-200/50 dark:border-slate-800/50 bg-slate-100 dark:bg-slate-800">
+                      {meeting.thumbnailUrl ? (
+                        <img
+                          src={meeting.thumbnailUrl.startsWith('http') ? meeting.thumbnailUrl : `${API_URL}${meeting.thumbnailUrl}`}
+                          alt={meeting.title}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover/stack:scale-105"
+                        />
+                      ) : (
+                        <div className={`flex h-full w-full flex-col items-center justify-center bg-gradient-to-br ${grad}`}>
+                          <span className="text-[10px] font-bold uppercase tracking-wider opacity-75">Pertemuan</span>
+                          <span className="text-3xl font-black">{meeting.meetingNumber}</span>
+                        </div>
                       )}
-                      {meeting.topic && (
-                        <span className="hidden sm:inline truncate max-w-[200px]">
-                          {meeting.topic}
-                        </span>
+
+                      {canCreate && (
+                        <label
+                          htmlFor={`thumb-upload-${meeting.id}`}
+                          className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/65 opacity-0 transition-opacity duration-300 hover:opacity-100 cursor-pointer text-white font-semibold text-[10px] uppercase tracking-wider z-10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                        >
+                          <svg className="h-5 w-5 mb-1 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          Ganti Cover
+                        </label>
                       )}
                     </div>
+
+                    {/* Middle: Info */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-bold text-base text-slate-900 leading-tight">
+                          {meeting.title}
+                        </p>
+                        <MeetingStatusBadge status={meeting.status} />
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
+                        <span className="flex items-center gap-1">
+                          <svg className="h-3.5 w-3.5 text-slate-450" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          {new Date(meeting.date).toLocaleDateString('id-ID', {
+                            weekday: 'short',
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </span>
+                        {(meeting.startTime || meeting.endTime) && (
+                          <span className="flex items-center gap-1">
+                            <svg className="h-3.5 w-3.5 text-slate-450" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            {meeting.startTime || '-'} – {meeting.endTime || '-'}
+                          </span>
+                        )}
+                        {meeting.topic && (
+                          <span className="hidden sm:inline truncate max-w-[200px] bg-slate-100 dark:bg-slate-800 text-slate-650 px-2 py-0.5 rounded text-[10px] font-bold">
+                            {meeting.topic}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right: Counts */}
+                    <div className="flex items-center justify-between sm:justify-end gap-4 mt-2 sm:mt-0 pt-2 sm:pt-0 border-t border-slate-150 sm:border-0">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-600">
+                          {meeting.attendanceSessions?.length ?? 0} Sesi Hadir
+                        </span>
+                      </div>
+                      <ChevronIcon open={isOpen} />
+                    </div>
                   </div>
+                </button>
 
-                  {/* Counts */}
-                  <div className="hidden items-center gap-3 sm:flex">
-                    <span className="text-xs text-slate-400">
-                      {meeting.attendanceSessions?.length ?? 0} sesi
-                    </span>
-                  </div>
-
-                  <ChevronIcon open={isOpen} />
-                </div>
-              </button>
-
-              {/* Accordion body */}
-              {isOpen && (
-                <div className="border-t border-slate-100 px-4 py-5 sm:px-5">
+                {/* Accordion body */}
+                {isOpen && (
+                  <div className="border-t border-slate-100 px-4 py-5 sm:px-5">
                   {/* Meeting info */}
                   {(meeting.topic || meeting.description) && (
                     <div className="mb-5 space-y-1.5">
@@ -364,8 +482,9 @@ export function MeetingSection({
                 </div>
               )}
             </div>
-          );
-        })}
+          </div>
+        );
+      })}
 
         {!loading && !error && items.length === 0 && (
           <EmptyState text="Belum ada meeting." />

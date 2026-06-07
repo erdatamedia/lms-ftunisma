@@ -43,4 +43,8 @@ export class CreateMeetingDto {
     message: 'endTime harus berformat HH:MM',
   })
   endTime?: string;
+
+  @IsOptional()
+  @IsString()
+  thumbnailUrl?: string;
 }
