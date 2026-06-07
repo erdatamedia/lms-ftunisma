@@ -192,24 +192,25 @@ export function AttendanceScanner() {
   }, []);
 
   return (
-    <div className="rounded-xl bg-white p-6 shadow-sm">
-      <h3 className="text-lg font-semibold">Scan Absensi QR</h3>
-      <p className="mt-1 text-sm text-slate-500">
-        Gunakan kamera untuk scan QR, atau tempel token manual.
-      </p>
+    <div className="space-y-6">
+      <div>
+        <p className="text-sm text-slate-500">
+          Silakan lakukan scan QR code yang ditunjukkan oleh dosen di layar kelas, atau masukkan token sesi absensi secara manual.
+        </p>
+      </div>
 
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3">
         {!scanning ? (
           <button
             onClick={startScanner}
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white"
+            className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-slate-850 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
           >
             Mulai Scan Kamera
           </button>
         ) : (
           <button
             onClick={stopScanner}
-            className="rounded-md bg-red-600 px-4 py-2 text-sm text-white"
+            className="rounded-xl bg-red-600 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-red-700"
           >
             Stop Scanner
           </button>
@@ -217,17 +218,16 @@ export function AttendanceScanner() {
       </div>
 
       {zoomRange && scanning && (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/40">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-900">Zoom Kamera</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">Zoom Kamera</p>
               <p className="mt-1 text-xs text-slate-500">
-                Naikkan zoom agar QR di layar proyektor tetap bisa dipindai dari
-                jarak jauh.
+                Naikkan zoom agar QR di layar proyektor tetap bisa dipindai dari jarak jauh.
               </p>
             </div>
 
-            <div className="text-sm font-medium text-slate-700">
+            <div className="text-sm font-bold text-slate-700 dark:text-slate-300">
               {zoomLevel.toFixed(1)}x
             </div>
           </div>
@@ -243,7 +243,7 @@ export function AttendanceScanner() {
               setZoomLevel(nextZoom);
               void applyZoom(nextZoom);
             }}
-            className="mt-4 w-full"
+            className="mt-4 w-full cursor-pointer accent-emerald-500"
             disabled={zoomApplying}
           />
         </div>
@@ -251,20 +251,20 @@ export function AttendanceScanner() {
 
       <div
         id={scannerElementId}
-        className="mt-4 max-w-md overflow-hidden rounded-lg border"
+        className="max-w-md overflow-hidden rounded-2xl border border-slate-200/50 dark:border-slate-800/50 bg-slate-50 dark:bg-slate-900"
       />
 
-      <div className="mt-6 space-y-3">
-        <label className="block text-sm font-medium">Atau input token manual</label>
+      <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800/40">
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Atau input token manual</label>
         <textarea
           value={manualToken}
           onChange={(e) => setManualToken(e.target.value)}
-          className="min-h-[100px] w-full rounded-lg border px-3 py-2"
-          placeholder="Tempel qrToken di sini"
+          className="min-h-[90px] w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm focus:border-slate-900 focus:outline-none"
+          placeholder="Tempel qrToken di sini..."
         />
         <button
           onClick={() => submitToken(manualToken)}
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white"
+          className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-slate-850 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
         >
           Submit Token
         </button>

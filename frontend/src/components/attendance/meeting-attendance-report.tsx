@@ -41,12 +41,12 @@ export function MeetingAttendanceReport({ meetingId }: { meetingId: string }) {
   const exitSession = items.find((s) => s.type === 'EXIT');
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
+    <div className="mt-6 border-t border-slate-100 dark:border-slate-800/40 pt-6">
       <div className="mb-4 flex items-center justify-between">
-        <h5 className="font-semibold text-slate-900">Rekap Absensi</h5>
+        <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400">Rekap Absensi</h5>
         <button
           onClick={fetchItems}
-          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+          className="rounded-xl border border-slate-200/50 px-3 py-1.5 text-xs font-bold text-slate-650 transition hover:bg-slate-100 dark:hover:bg-slate-800"
         >
           Refresh
         </button>
@@ -56,7 +56,7 @@ export function MeetingAttendanceReport({ meetingId }: { meetingId: string }) {
       {error && <p className="text-sm text-red-500">{error}</p>}
 
       {!loading && !error && items.length === 0 && (
-        <p className="text-sm text-slate-400">Belum ada sesi absensi dibuka.</p>
+        <p className="text-sm text-slate-500">Belum ada sesi absensi dibuka.</p>
       )}
 
       {!loading && items.length > 0 && (
@@ -65,51 +65,53 @@ export function MeetingAttendanceReport({ meetingId }: { meetingId: string }) {
             if (!session) return null;
             const count = session.attendances?.length ?? 0;
             return (
-              <div key={session.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div key={session.id} className="rounded-2xl border border-slate-200/50 bg-slate-50/50 dark:border-slate-800/50 dark:bg-slate-900/20 p-4">
                 {/* Session header + summary */}
-                <div className="mb-3 flex items-center justify-between">
+                <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
                         session.type === 'ENTRY'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-blue-100 text-blue-700'
+                          ? 'bg-green-150 text-green-700 dark:bg-green-500/10 dark:text-green-400'
+                          : 'bg-blue-150 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400'
                       }`}
                     >
                       {session.type}
                     </span>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-slate-400">
+                      Batas:{' '}
                       {new Date(session.expiresAt).toLocaleTimeString('id-ID', {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
                     </span>
                   </div>
-                  <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
-                    {count} hadir
-                    {totalEnrolled ? ` dari ${totalEnrolled}` : ''}
+                  <span className="rounded-full bg-white dark:bg-slate-900 px-2.5 py-0.5 text-[11px] font-bold text-slate-700 dark:text-slate-350 border border-slate-200/50 dark:border-slate-800">
+                    {count} Hadir
+                    {totalEnrolled ? ` / ${totalEnrolled}` : ''}
                   </span>
                 </div>
 
                 {/* Attendance list */}
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {session.attendances?.map((att: any) => (
                     <div
                       key={att.id}
-                      className="flex items-center gap-3 rounded-lg bg-white px-3 py-2 ring-1 ring-slate-100"
+                      className="flex items-center gap-3 rounded-xl bg-white dark:bg-slate-900/60 p-3 border border-slate-100 dark:border-slate-800"
                     >
-                      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
+                      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-400">
                         {(att.student?.user?.name || '?')[0].toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-slate-900">
+                        <p className="truncate text-sm font-semibold text-slate-950 dark:text-slate-100">
                           {att.student?.user?.name || '-'}
                         </p>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                           {att.student?.nim || '-'} ·{' '}
                           {new Date(att.scannedAt).toLocaleTimeString('id-ID', {
                             hour: '2-digit',
                             minute: '2-digit',
+                            second: '2-digit',
                           })}
                         </p>
                       </div>
@@ -117,7 +119,7 @@ export function MeetingAttendanceReport({ meetingId }: { meetingId: string }) {
                   ))}
 
                   {count === 0 && (
-                    <p className="py-2 text-center text-xs text-slate-400">
+                    <p className="py-4 text-center text-xs text-slate-400 dark:text-slate-500">
                       Belum ada mahasiswa yang scan.
                     </p>
                   )}
