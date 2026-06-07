@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth';
+import { useSearchStore } from '@/store/search';
 
 function IconHome({ className }: { className?: string }) {
   return (
@@ -109,6 +110,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, clearAuth } = useAuthStore();
+  const { searchQuery, setSearchQuery } = useSearchStore();
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
@@ -217,7 +219,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all ${
                   active
-                    ? 'bg-slate-900 text-white shadow-md dark:bg-white dark:text-slate-950 scale-[1.02]'
+                    ? 'bg-accent text-white shadow-sm scale-[1.02]'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/30 dark:hover:bg-slate-800/30 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -266,17 +268,57 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
         {/* Desktop sub-header */}
         <header className="glass-panel sticky top-4 z-20 hidden lg:mx-6 lg:flex lg:h-16 lg:items-center lg:justify-between lg:rounded-2xl lg:px-6 lg:shadow-md">
+          {/* Left: Dynamic Dashboard Title */}
           <div className="flex items-center gap-3">
-            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Sistem LMS Aktif</span>
+            <h1 className="text-lg font-bold text-slate-800 dark:text-white">Dashboard</h1>
           </div>
+
+          {/* Center: Search Bar */}
+          <div className="relative w-80 max-w-xs">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+              <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.602 10.602Z" />
+              </svg>
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search here..."
+              className="w-full rounded-full border border-slate-300/30 bg-slate-200/20 dark:bg-slate-800/40 py-2.5 pl-9 pr-4 text-xs font-medium text-slate-800 dark:text-slate-200 focus:border-accent focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-accent/15 transition-all"
+            />
+          </div>
+
+          {/* Right: Actions, Messages, Notifications, Avatar */}
           <div className="flex items-center gap-4">
+            {/* Chat Icon (Decorative) */}
+            <button className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-slate-200/50 hover:bg-slate-200/80 dark:bg-slate-800/50 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-300 transition active:scale-95">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v5.028Z" />
+              </svg>
+            </button>
+
+            {/* Notification Bell with red badge */}
+            <button className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-slate-200/50 hover:bg-slate-200/80 dark:bg-slate-800/50 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-300 transition active:scale-95">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+              </svg>
+              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900" />
+            </button>
+
             <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
-            <div className="h-4 w-px bg-slate-200/20" />
-            <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">
-              {user?.name} ·{' '}
-              <span className="font-bold text-slate-900 dark:text-white">{roleLabel}</span>
-            </p>
+            
+            <div className="h-5 w-px bg-slate-200/20" />
+
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <span className="block text-xs font-bold text-slate-800 dark:text-white leading-tight">{user?.name}</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider leading-none mt-0.5 block">{roleLabel}</span>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-green-600 font-bold text-white text-xs shadow-sm ring-2 ring-emerald-500/20">
+                {(user?.name || '?')[0].toUpperCase()}
+              </div>
+            </div>
           </div>
         </header>
 

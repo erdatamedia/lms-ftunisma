@@ -76,6 +76,9 @@ html.light {
   --color-indigo-600: var(--accent);
   --color-indigo-700: var(--accent-hover);
   
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  
   --radius-xl: 12px;
   --radius-2xl: 16px;
   
