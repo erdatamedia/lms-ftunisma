@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api, getApiErrorMessage, API_URL } from '@/lib/api';
+import { motion } from 'framer-motion';
 import { MaterialSection } from '@/components/materials/material-section';
 import { AssignmentSection } from '@/components/assignments/assignment-section';
 import { AttendanceManager } from '@/components/attendance/attendance-manager';
@@ -42,6 +43,135 @@ function MeetingStatusBadge({ status }: { status: string }) {
     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${map[status] || 'bg-slate-100 text-slate-600'}`}>
       {status}
     </span>
+  );
+}
+
+interface MeetingDetailsProps {
+  meeting: any;
+  classId: string;
+  canCreate: boolean;
+  isStudent: boolean;
+}
+
+function MeetingDetails({ meeting, classId, canCreate, isStudent }: MeetingDetailsProps) {
+  const [activeTab, setActiveTab] = useState<'materials' | 'assignments' | 'attendance'>('materials');
+
+  return (
+    <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-5 sm:px-5 bg-slate-50/10 dark:bg-slate-900/10">
+      {/* Meeting topic/description */}
+      {(meeting.topic || meeting.description) && (
+        <div className="mb-6 rounded-xl bg-slate-100/40 dark:bg-slate-800/20 p-4 border border-slate-200/40 dark:border-slate-700/30">
+          {meeting.topic && (
+            <h4 className="text-sm font-bold text-slate-800 dark:text-white">
+              Topik: {meeting.topic}
+            </h4>
+          )}
+          {meeting.description && (
+            <p className="text-xs text-slate-500 mt-1 dark:text-slate-400 whitespace-pre-wrap">{meeting.description}</p>
+          )}
+        </div>
+      )}
+
+      {/* Tabs Header - Styled Pill Buttons */}
+      <div className="flex border-b border-slate-200/20 pb-px mb-6 gap-2 overflow-x-auto scrollbar-none">
+        {(
+          [
+            {
+              id: 'materials' as const,
+              label: 'Materi & Bahan Ajar',
+              icon: (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              ),
+            },
+            {
+              id: 'assignments' as const,
+              label: 'Tugas Kelas',
+              icon: (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+              ),
+            },
+            {
+              id: 'attendance' as const,
+              label: 'Presensi / Absensi',
+              icon: (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ),
+            },
+          ]
+        ).map((tab) => {
+          const isSelected = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all whitespace-nowrap active:scale-95 border ${
+                isSelected
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-sm dark:bg-white dark:text-slate-950 dark:border-white'
+                  : 'text-slate-500 border-transparent hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:text-slate-950 dark:hover:text-white'
+              }`}
+              type="button"
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tabs Content Card */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm min-h-[160px]">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          className="space-y-4"
+        >
+          {activeTab === 'materials' && (
+            <>
+              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400">Materi & Bahan Ajar</h5>
+              <MaterialSection meetingId={meeting.id} canCreate={canCreate} />
+            </>
+          )}
+
+          {activeTab === 'assignments' && (
+            <>
+              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400">Daftar Tugas</h5>
+              <AssignmentSection
+                classId={classId}
+                meetingId={meeting.id}
+                canCreate={canCreate}
+                isStudent={isStudent}
+              />
+            </>
+          )}
+
+          {activeTab === 'attendance' && (
+            <>
+              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400">Presensi Kelas</h5>
+              {canCreate && (
+                <div className="space-y-5">
+                  <AttendanceManager meetingId={meeting.id} />
+                  <MeetingAttendanceReport meetingId={meeting.id} />
+                </div>
+              )}
+              {isStudent && (
+                <div className="space-y-5">
+                  <AttendanceScanner />
+                  <MyAttendanceList meetingId={meeting.id} />
+                </div>
+              )}
+            </>
+          )}
+        </motion.div>
+      </div>
+    </div>
   );
 }
 
@@ -441,46 +571,13 @@ export function MeetingSection({
 
                 {/* Accordion body */}
                 {isOpen && (
-                  <div className="border-t border-slate-100 px-4 py-5 sm:px-5">
-                  {/* Meeting info */}
-                  {(meeting.topic || meeting.description) && (
-                    <div className="mb-5 space-y-1.5">
-                      {meeting.topic && (
-                        <p className="text-sm text-slate-600">
-                          <span className="font-medium">Topik:</span> {meeting.topic}
-                        </p>
-                      )}
-                      {meeting.description && (
-                        <p className="text-sm text-slate-600">{meeting.description}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {canCreate && (
-                    <div className="mb-5 space-y-4">
-                      <AttendanceManager meetingId={meeting.id} />
-                      <MeetingAttendanceReport meetingId={meeting.id} />
-                    </div>
-                  )}
-
-                  {isStudent && (
-                    <div className="mb-5 space-y-4">
-                      <AttendanceScanner />
-                      <MyAttendanceList meetingId={meeting.id} />
-                    </div>
-                  )}
-
-                  <div className="space-y-5">
-                    <MaterialSection meetingId={meeting.id} canCreate={canCreate} />
-                    <AssignmentSection
-                      classId={classId}
-                      meetingId={meeting.id}
-                      canCreate={canCreate}
-                      isStudent={isStudent}
-                    />
-                  </div>
-                </div>
-              )}
+                  <MeetingDetails
+                    meeting={meeting}
+                    classId={classId}
+                    canCreate={canCreate}
+                    isStudent={isStudent}
+                  />
+                )}
             </div>
           </div>
         );
