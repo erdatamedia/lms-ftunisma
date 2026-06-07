@@ -6,6 +6,8 @@ import {
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
@@ -19,6 +21,12 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthenticatedUser } from './auth-user.interface';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResetPasswordDirectDto } from './dto/reset-password-direct.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  imageFileFilter,
+  imageLimits,
+  imageStorage,
+} from '../common/upload/image-upload.util';
 
 @Controller('auth')
 export class AuthController {
@@ -61,5 +69,25 @@ export class AuthController {
   @Post('forgot-password/reset')
   resetPasswordDirect(@Body() dto: ResetPasswordDirectDto) {
     return this.authService.resetPasswordDirect(dto);
+  }
+
+  @ApiTags('auth')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload own avatar picture' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.STUDENT, UserRole.LECTURER, UserRole.ADMIN)
+  @Post('avatar')
+  @UseInterceptors(
+    FileInterceptor('avatar', {
+      storage: imageStorage('./uploads/avatars'),
+      fileFilter: imageFileFilter,
+      limits: imageLimits,
+    }),
+  )
+  uploadAvatar(
+    @Req() req: { user: AuthenticatedUser },
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.authService.updateAvatar(req.user.userId, file);
   }
 }

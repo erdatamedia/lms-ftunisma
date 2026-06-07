@@ -21,6 +21,7 @@ export interface AuthUser {
   name: string;
   email: string;
   role: UserRole;
+  avatarUrl?: string | null;
   student?: StudentProfile | null;
   lecturer?: LecturerProfile | null;
 }

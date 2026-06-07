@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { api, getApiErrorMessage } from '@/lib/api';
+import { api, getApiErrorMessage, API_URL } from '@/lib/api';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { AlertBanner } from '@/components/ui/alert-banner';
@@ -24,7 +24,7 @@ function EyeIcon({ open }: { open: boolean }) {
 }
 
 export default function LecturerProfilePage() {
-  const { user } = useAuthStore();
+  const { user, accessToken, setAuth } = useAuthStore();
   const lecturer = user?.lecturer;
 
   const [form, setForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
@@ -32,6 +32,55 @@ export default function LecturerProfilePage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+
+  const [uploading, setUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
+  const [avatarSuccess, setAvatarSuccess] = useState('');
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setAvatarError('Tipe berkas tidak didukung. Harap pilih JPG, JPEG, PNG, atau WEBP.');
+      setAvatarSuccess('');
+      return;
+    }
+
+    const maxBytes = 2 * 1024 * 1024; // 2MB
+    if (file.size > maxBytes) {
+      setAvatarError('Ukuran berkas tidak boleh lebih dari 2MB.');
+      setAvatarSuccess('');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setAvatarError('');
+      setAvatarSuccess('');
+
+      const token = accessToken || localStorage.getItem('accessToken') || '';
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      const response = await api.post('/auth/avatar', formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const updatedUser = response.data.user;
+      setAuth(token, updatedUser);
+      setAvatarSuccess('Foto profil berhasil diperbarui.');
+    } catch (err) {
+      setAvatarError(getApiErrorMessage(err));
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
 
   const validationError = (() => {
     if (!form.oldPassword) return 'Password lama wajib diisi.';
@@ -77,6 +126,69 @@ export default function LecturerProfilePage() {
           <div>
             <h1 className="text-xl font-bold text-slate-900">Profil Saya</h1>
             <p className="mt-0.5 text-sm text-slate-500">Informasi akun dan ubah password.</p>
+          </div>
+
+          {/* Foto Profil Card */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-400">Foto Profil</h2>
+            <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
+              <div className="relative group">
+                <input
+                  type="file"
+                  id="avatar-upload"
+                  className="hidden"
+                  accept="image/png, image/jpeg, image/jpg, image/webp"
+                  onChange={handleAvatarChange}
+                  disabled={uploading}
+                />
+                <label htmlFor="avatar-upload" className="cursor-pointer block relative">
+                  <div className="relative h-24 w-24 overflow-hidden rounded-full ring-4 ring-emerald-500/20 transition-all duration-300 group-hover:ring-emerald-500/50">
+                    {uploading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 text-white backdrop-blur-[2px] z-10">
+                        <svg className="h-6 w-6 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                      </div>
+                    )}
+                    
+                    {/* Hover Overlay */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/60 opacity-0 transition-opacity duration-300 group-hover:opacity-100 text-white text-[10px] font-semibold z-10">
+                      <svg className="h-5 w-5 mb-1 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Ubah Foto
+                    </div>
+
+                    {user?.avatarUrl ? (
+                      <img
+                        src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${API_URL}${user.avatarUrl}`}
+                        alt={user.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-400 to-green-600 text-3xl font-extrabold text-white">
+                        {(user?.name || '?')[0].toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex-1 text-center sm:text-left space-y-1">
+                <h3 className="text-base font-bold text-slate-900">{user?.name}</h3>
+                <p className="text-xs text-slate-500">
+                  Peran: <span className="font-semibold text-emerald-600 dark:text-emerald-400">Dosen</span>
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  Format: JPG, JPEG, PNG, WEBP. Maks 2MB.
+                </p>
+                
+                {avatarError && <p className="text-xs font-semibold text-red-500 mt-1">{avatarError}</p>}
+                {avatarSuccess && <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-1">{avatarSuccess}</p>}
+              </div>
+            </div>
           </div>
 
           {/* Profile info */}

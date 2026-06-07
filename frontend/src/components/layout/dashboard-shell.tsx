@@ -5,6 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth';
 import { useSearchStore } from '@/store/search';
+import { PageTransition } from './page-transition';
+import { API_URL } from '@/lib/api';
 
 function IconHome({ className }: { className?: string }) {
   return (
@@ -315,16 +317,24 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 <span className="block text-xs font-bold text-slate-800 dark:text-white leading-tight">{user?.name}</span>
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider leading-none mt-0.5 block">{roleLabel}</span>
               </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-green-600 font-bold text-white text-xs shadow-sm ring-2 ring-emerald-500/20">
-                {(user?.name || '?')[0].toUpperCase()}
-              </div>
+              {user?.avatarUrl ? (
+                <img
+                  src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${API_URL}${user.avatarUrl}`}
+                  alt={user.name}
+                  className="h-9 w-9 rounded-full object-cover shadow-sm ring-2 ring-emerald-500/20"
+                />
+              ) : (
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-green-600 font-bold text-white text-xs shadow-sm ring-2 ring-emerald-500/20">
+                  {(user?.name || '?')[0].toUpperCase()}
+                </div>
+              )}
             </div>
           </div>
         </header>
 
         {/* Main content */}
         <main className="mx-auto max-w-7xl p-4 pb-24 lg:p-6 lg:pb-8">
-          {children}
+          <PageTransition key={pathname}>{children}</PageTransition>
         </main>
       </div>
 

@@ -14,6 +14,8 @@ import { LoginDto } from './dto/login.dto';
 import { PublicRegisterDto } from './dto/public-register.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResetPasswordDirectDto } from './dto/reset-password-direct.dto';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class AuthService {
@@ -144,5 +146,53 @@ export class AuthService {
     });
 
     return { message: 'Password berhasil diubah' };
+  }
+
+  async updateAvatar(userId: string, file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('Berkas foto profil tidak ditemukan');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User tidak ditemukan');
+    }
+
+    if (user.avatarUrl) {
+      try {
+        const oldPath = path.join(
+          process.cwd(),
+          user.avatarUrl.replace(/^\//, ''),
+        );
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      } catch {
+        // ignore errors
+      }
+    }
+
+    const avatarUrl = `/uploads/avatars/${file.filename}`;
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        avatarUrl: true,
+        createdAt: true,
+        updatedAt: true,
+        student: true,
+        lecturer: true,
+      },
+    });
+
+    return {
+      message: 'Foto profil berhasil diperbarui',
+      user: updatedUser,
+    };
   }
 }
