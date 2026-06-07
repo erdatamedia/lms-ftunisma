@@ -18,18 +18,18 @@ function StatCard({
   label: string;
   value: string | number;
   icon: React.ReactNode;
-  color?: 'slate' | 'blue' | 'green' | 'amber' | 'purple';
+  color?: 'slate' | 'blue' | 'green' | 'amber' | 'emerald';
 }) {
   const colorMap = {
     slate: 'bg-slate-100 text-slate-600',
     blue: 'bg-blue-100 text-blue-600',
     green: 'bg-green-100 text-green-600',
     amber: 'bg-amber-100 text-amber-600',
-    purple: 'bg-purple-100 text-purple-600',
+    emerald: 'bg-emerald-100 text-emerald-600',
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="premium-card rounded-2xl p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
@@ -55,7 +55,7 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]"
+      className="premium-card flex items-start gap-4 rounded-2xl p-4"
     >
       <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white">
         {icon}
@@ -268,7 +268,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
                 <StatCard label="Total Kelas" value={adminSummary.totalClasses} icon={IconClass} color="blue" />
                 <StatCard label="Kelas Aktif" value={adminSummary.activeClasses} icon={IconCheck} color="green" />
-                <StatCard label="Mata Kuliah" value={adminSummary.totalCourses} icon={IconBook} color="purple" />
+                <StatCard label="Mata Kuliah" value={adminSummary.totalCourses} icon={IconBook} color="emerald" />
                 <StatCard label="Total Dosen" value={adminSummary.totalLecturers} icon={IconUsers} color="amber" />
                 <StatCard label="Total Mahasiswa" value={adminSummary.totalStudents} icon={IconUsers} color="slate" />
                 <StatCard label="Total Enroll" value={adminSummary.totalEnrollments} icon={IconEnroll} color="blue" />
@@ -306,7 +306,7 @@ export default function DashboardPage() {
                     <Link
                       key={item.id}
                       href={`/lecturer/classes/${item.id}`}
-                      className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]"
+                      className="premium-card block rounded-2xl p-4"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -339,7 +339,7 @@ export default function DashboardPage() {
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
                 <StatCard label="Kelas Diikuti" value={studentSummary.totalClasses} icon={IconClass} color="blue" />
-                <StatCard label="Total Meeting" value={studentSummary.totalMeetings} icon={IconCalendar} color="purple" />
+                <StatCard label="Total Meeting" value={studentSummary.totalMeetings} icon={IconCalendar} color="emerald" />
                 <StatCard label="Tugas Terkumpul" value={studentSummary.totalSubmitted} icon={IconCheck} color="green" />
               </div>
 
@@ -352,7 +352,7 @@ export default function DashboardPage() {
                     <Link
                       key={item.class?.id || index}
                       href={`/student/classes/${item.class?.id}`}
-                      className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]"
+                      className="premium-card block rounded-2xl p-4"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">

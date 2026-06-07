@@ -108,7 +108,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-slate-100 px-4 pb-10 pt-10">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-transparent px-4 pb-10 pt-10">
       {/* Floating Theme Toggle */}
       <div className="absolute top-4 right-4">
         <button
@@ -140,7 +140,7 @@ export default function ForgotPasswordPage() {
           <p className="mt-1 text-sm text-slate-500">Informatika FT Universitas Islam Malang</p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="premium-card rounded-2xl p-6">
           {/* Step 1: Verify Email */}
           {step === 1 && (
             <>

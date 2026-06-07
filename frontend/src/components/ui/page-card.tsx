@@ -12,7 +12,7 @@ export function PageCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="premium-card rounded-2xl p-6">
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-slate-900">{title}</h2>

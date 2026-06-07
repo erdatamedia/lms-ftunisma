@@ -86,7 +86,7 @@ function StudentList({ enrollments }: { enrollments: any[] }) {
             {processed.map((item, index) => (
               <div
                 key={item.id || index}
-                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                className="premium-card rounded-2xl p-4"
               >
                 <div className="flex items-start gap-3">
                   <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">
@@ -115,7 +115,7 @@ function StudentList({ enrollments }: { enrollments: any[] }) {
           </div>
 
           {/* Desktop table */}
-          <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white md:block">
+          <div className="hidden overflow-hidden rounded-2xl premium-card md:block">
             <table className="min-w-full divide-y divide-slate-200">
               <thead className="bg-slate-50">
                 <tr>
@@ -236,7 +236,7 @@ export default function LecturerClassDetailPage({
           {item && (
             <div className="space-y-5">
               {/* Class info card */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="premium-card rounded-2xl p-5">
                 <p className="text-lg font-bold text-slate-900">
                   {item.course?.name} — Kelas {item.className}
                 </p>
@@ -266,7 +266,7 @@ export default function LecturerClassDetailPage({
               {classId && <MeetingSection classId={classId} canCreate />}
 
               {/* Student list */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="premium-card rounded-2xl p-5">
                 <div className="mb-4">
                   <h2 className="text-base font-semibold text-slate-900">Daftar Mahasiswa</h2>
                   <p className="mt-0.5 text-xs text-slate-500">

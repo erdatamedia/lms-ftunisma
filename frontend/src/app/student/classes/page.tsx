@@ -99,7 +99,7 @@ export default function StudentClassesPage() {
           {/* Join form */}
           <form
             onSubmit={handleJoinClass}
-            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+            className="premium-card rounded-2xl p-4"
           >
             <p className="mb-3 text-sm font-semibold text-slate-800">Gabung Kelas Baru</p>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -176,7 +176,7 @@ export default function StudentClassesPage() {
                     <Link
                       key={item.id}
                       href={`/student/classes/${item.id}`}
-                      className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md active:scale-[0.98]"
+                      className="premium-card block rounded-2xl p-4"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -206,7 +206,7 @@ export default function StudentClassesPage() {
                 </div>
 
                 {/* Desktop table */}
-                <div className="hidden md:block overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <div className="hidden md:block overflow-hidden rounded-2xl premium-card">
                   <table className="min-w-full divide-y divide-slate-200">
                     <thead className="bg-slate-50">
                       <tr>

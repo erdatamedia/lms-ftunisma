@@ -59,7 +59,7 @@ export default function LecturerClassesPage() {
               <Link
                 key={item.id}
                 href={`/lecturer/classes/${item.id}`}
-                className="block rounded-2xl border border-slate-200 bg-white p-5 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+                className="premium-card block rounded-2xl p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>

@@ -266,7 +266,7 @@ export function MeetingSection({
           return (
             <div
               key={meeting.id}
-              className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+              className="premium-card overflow-hidden rounded-2xl"
             >
               {/* Accordion header — always visible, clickable */}
               <button

@@ -177,7 +177,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       : pathname.startsWith(href);
 
   return (
-    <div className="min-h-screen bg-slate-100 transition-all duration-300">
+    <div className="min-h-screen bg-transparent transition-all duration-300">
       {/* ── Desktop Sidebar ── */}
       <aside className="glass-panel hidden lg:fixed lg:inset-y-4 lg:left-4 lg:z-30 lg:flex lg:w-66 lg:flex-col rounded-2xl shadow-lg">
         {/* Brand */}
