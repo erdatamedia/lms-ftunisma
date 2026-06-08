@@ -230,7 +230,7 @@ model Submission {
   assignmentId   String
   studentId      String
   fileName       String?
-  fileUrl        String
+  fileUrl        String?
   note           String?
   submittedAt    DateTime         @default(now())
   status         SubmissionStatus @default(SUBMITTED)

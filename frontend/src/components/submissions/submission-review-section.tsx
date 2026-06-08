@@ -596,12 +596,16 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
                     Download
                   </a>
                 </div>
-              ) : (
+              ) : modalItem.id?.startsWith('not-submitted-') ? (
                 <div className="rounded-xl border border-dashed border-amber-300 bg-amber-500/10 p-3.5 text-amber-800 dark:text-amber-400">
                   <p className="text-xs font-extrabold uppercase tracking-wide">Pengumpulan Kolektif / Fisik / Offline</p>
                   <p className="mt-1 text-[11px] leading-relaxed opacity-95">
                     Mahasiswa belum mengumpulkan tugas secara digital di LMS. Anda dapat memberikan nilai langsung untuk mencatat nilai pengumpulan fisik atau kolektif.
                   </p>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 bg-slate-50 dark:bg-slate-900/50">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 italic">Dikumpulkan secara digital tanpa berkas (hanya catatan)</p>
                 </div>
               )}
 

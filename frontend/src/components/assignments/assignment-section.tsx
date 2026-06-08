@@ -178,11 +178,6 @@ export function AssignmentSection({
         : assignment?.submissions?.[0];
       const isUpdating = Boolean(mySubmission);
 
-      if (!isUpdating && !values.file) {
-        setError('File PDF submission wajib dipilih.');
-        return;
-      }
-
       const formData = new FormData();
       formData.append('note', values.note || '');
       if (values.file) formData.append('file', values.file);
@@ -237,19 +232,25 @@ export function AssignmentSection({
               <SubmissionStatusBadge submission={mySubmission} />
             </div>
 
-            <div className="mt-2 flex items-center gap-2">
-              <svg className="h-5 w-5 flex-shrink-0 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z" />
-              </svg>
-              <a
-                href={`${process.env.NEXT_PUBLIC_API_URL}${mySubmission.fileUrl}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex-1 truncate text-sm font-medium text-blue-600 hover:underline"
-              >
-                {mySubmission.fileName || 'Lihat file submission'}
-              </a>
-            </div>
+            {mySubmission.fileUrl ? (
+              <div className="mt-2 flex items-center gap-2">
+                <svg className="h-5 w-5 flex-shrink-0 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z" />
+                </svg>
+                <a
+                  href={`${process.env.NEXT_PUBLIC_API_URL}${mySubmission.fileUrl}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 truncate text-sm font-medium text-blue-600 hover:underline"
+                >
+                  {mySubmission.fileName || 'Lihat file submission'}
+                </a>
+              </div>
+            ) : (
+              <div className="mt-2 text-xs text-slate-500 italic">
+                Dikumpulkan tanpa berkas (hanya catatan)
+              </div>
+            )}
 
             {isReviewed && mySubmission.feedback && (
               <div className="mt-2 rounded-lg bg-green-50 p-2">
@@ -292,7 +293,7 @@ export function AssignmentSection({
               label={mySubmission ? 'Ganti File Submission PDF' : 'File Submission PDF'}
               file={submissionForm.file || null}
               onFileChange={(file) => handleSubmissionField(item.id, 'file', file)}
-              required={!mySubmission}
+              required={false}
             />
 
             <button

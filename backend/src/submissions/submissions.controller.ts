@@ -49,14 +49,10 @@ export class SubmissionsController {
   @Post('assignments/:assignmentId/submit')
   submit(
     @Param('assignmentId') assignmentId: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: Express.Multer.File | undefined,
     @Body('note') note: string,
     @Req() req: { user: AuthenticatedUser },
   ) {
-    if (!file) {
-      throw new BadRequestException('File PDF wajib diunggah');
-    }
-
     return this.submissionsService.submit(assignmentId, file, note, req.user);
   }
 

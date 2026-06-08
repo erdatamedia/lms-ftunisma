@@ -44,7 +44,7 @@ export class SubmissionsService {
 
   async submit(
     assignmentId: string,
-    file: Express.Multer.File,
+    file: Express.Multer.File | undefined,
     note: string | undefined,
     currentUser: { userId: string; role: string },
   ) {
@@ -101,8 +101,8 @@ export class SubmissionsService {
       data: {
         assignmentId,
         studentId: student.id,
-        fileName: file.originalname,
-        fileUrl: `/uploads/submissions/${file.filename}`,
+        fileName: file ? file.originalname : null,
+        fileUrl: file ? `/uploads/submissions/${file.filename}` : null,
         note: note?.trim(),
         status: SubmissionStatus.SUBMITTED,
       },
