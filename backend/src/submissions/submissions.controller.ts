@@ -28,6 +28,7 @@ import {
   pdfStorage,
 } from '../common/upload/pdf-upload.util';
 import { GradeSubmissionDto } from './dto/grade-submission.dto';
+import { GradeStudentDirectlyDto } from './dto/grade-student-directly.dto';
 import { SubmissionsService } from './submissions.service';
 import { AuthenticatedUser } from '../auth/auth-user.interface';
 
@@ -137,5 +138,16 @@ export class SubmissionsController {
     @Req() req: { user: AuthenticatedUser },
   ) {
     return this.submissionsService.grade(submissionId, dto, req.user);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.LECTURER)
+  @Post('assignments/:assignmentId/submissions/grade-student')
+  gradeStudentDirectly(
+    @Param('assignmentId') assignmentId: string,
+    @Body() dto: GradeStudentDirectlyDto,
+    @Req() req: { user: AuthenticatedUser },
+  ) {
+    return this.submissionsService.gradeStudentDirectly(assignmentId, dto, req.user);
   }
 }

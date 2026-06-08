@@ -12,20 +12,27 @@ type Filter = 'all' | 'ungraded' | 'graded';
 function statusBadge(status: string, score: any) {
   if (score !== null && score !== undefined) {
     return (
-      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+      <span className="inline-flex items-center rounded-full bg-green-100 dark:bg-green-500/10 px-2 py-0.5 text-xs font-bold text-green-700 dark:text-green-400">
         Dinilai
+      </span>
+    );
+  }
+  if (status === 'NOT_SUBMITTED') {
+    return (
+      <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-bold text-slate-500 dark:text-slate-400">
+        Belum Kumpul
       </span>
     );
   }
   if (status === 'LATE') {
     return (
-      <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+      <span className="inline-flex items-center rounded-full bg-red-100 dark:bg-red-500/10 px-2 py-0.5 text-xs font-bold text-red-700 dark:text-red-400">
         Terlambat
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+    <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-400">
       Belum Dinilai
     </span>
   );
@@ -99,19 +106,21 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
       feedback: item.feedback || '',
     });
 
-    setLogsLoading(true);
-    try {
-      const token = localStorage.getItem('accessToken');
-      if (token) {
-        const { data: logs } = await api.get(`/submissions/${item.id}/logs`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setModalLogs(logs);
+    if (item.id && !item.id.startsWith('not-submitted-')) {
+      setLogsLoading(true);
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (token) {
+          const { data: logs } = await api.get(`/submissions/${item.id}/logs`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setModalLogs(logs);
+        }
+      } catch {
+        setModalLogs([]);
+      } finally {
+        setLogsLoading(false);
       }
-    } catch {
-      setModalLogs([]);
-    } finally {
-      setLogsLoading(false);
     }
   };
 
@@ -136,11 +145,25 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
       const token = localStorage.getItem('accessToken');
       if (!token) { setSaveError('Token tidak ditemukan.'); return; }
 
-      await api.patch(
-        `/submissions/${modalItem.id}/grade`,
-        { score: Number(gradeForm.score), feedback: gradeForm.feedback || undefined },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      const isDirectGrade = modalItem.id && modalItem.id.startsWith('not-submitted-');
+
+      if (isDirectGrade) {
+        await api.post(
+          `/assignments/${assignmentId}/submissions/grade-student`,
+          {
+            studentId: modalItem.studentId,
+            score: Number(gradeForm.score),
+            feedback: gradeForm.feedback || undefined,
+          },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+      } else {
+        await api.patch(
+          `/submissions/${modalItem.id}/grade`,
+          { score: Number(gradeForm.score), feedback: gradeForm.feedback || undefined },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+      }
 
       await fetchSubmissions();
       closeModal();
@@ -235,12 +258,16 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
                       </td>
                       <td className="py-3 pr-4 text-slate-500">{item.student?.nim || '-'}</td>
                       <td className="py-3 pr-4 text-slate-500">
-                        {new Date(item.submittedAt).toLocaleDateString('id-ID', {
-                          day: '2-digit',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        {item.submittedAt ? (
+                          new Date(item.submittedAt).toLocaleDateString('id-ID', {
+                            day: '2-digit',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        ) : (
+                          <span className="text-slate-400 font-normal">-</span>
+                        )}
                       </td>
                       <td className="py-3 pr-4">{statusBadge(item.status, item.score)}</td>
                       <td className="py-3 pr-4 text-right font-semibold text-slate-900">
@@ -281,12 +308,16 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
                       </div>
                       <p className="text-xs text-slate-500">{item.student?.nim || '-'}</p>
                       <p className="mt-1 text-xs text-slate-400">
-                        {new Date(item.submittedAt).toLocaleString('id-ID', {
-                          day: '2-digit',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        {item.submittedAt ? (
+                          new Date(item.submittedAt).toLocaleString('id-ID', {
+                            day: '2-digit',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        ) : (
+                          'Belum mengumpulkan'
+                        )}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
@@ -345,27 +376,38 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
             {/* Modal body */}
             <div className="space-y-4 px-5 py-4">
               {/* File info */}
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <div className="flex items-center gap-2">
-                  <svg className="h-8 w-8 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z" />
-                  </svg>
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{modalItem.fileName || 'File submission'}</p>
-                    <p className="text-xs text-slate-400">
-                      {new Date(modalItem.submittedAt).toLocaleString('id-ID')}
-                    </p>
+              {modalItem.fileUrl ? (
+                <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="flex items-center gap-2">
+                    <svg className="h-8 w-8 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{modalItem.fileName || 'File submission'}</p>
+                      {modalItem.submittedAt && (
+                        <p className="text-xs text-slate-400">
+                          {new Date(modalItem.submittedAt).toLocaleString('id-ID')}
+                        </p>
+                      )}
+                    </div>
                   </div>
+                  <a
+                    href={`${process.env.NEXT_PUBLIC_API_URL}${modalItem.fileUrl}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-slate-700"
+                  >
+                    Download
+                  </a>
                 </div>
-                <a
-                  href={`${process.env.NEXT_PUBLIC_API_URL}${modalItem.fileUrl}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-slate-700"
-                >
-                  Download
-                </a>
-              </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-amber-300 bg-amber-500/10 p-3.5 text-amber-800 dark:text-amber-400">
+                  <p className="text-xs font-extrabold uppercase tracking-wide">Pengumpulan Kolektif / Fisik / Offline</p>
+                  <p className="mt-1 text-[11px] leading-relaxed opacity-95">
+                    Mahasiswa belum mengumpulkan tugas secara digital di LMS. Anda dapat memberikan nilai langsung untuk mencatat nilai pengumpulan fisik atau kolektif.
+                  </p>
+                </div>
+              )}
 
               {modalItem.note && (
                 <div className="rounded-xl border border-slate-200 p-3">

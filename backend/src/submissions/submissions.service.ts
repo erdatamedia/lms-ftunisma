@@ -341,7 +341,21 @@ export class SubmissionsService {
     const assignment = await this.prisma.assignment.findUnique({
       where: { id: assignmentId },
       include: {
-        class: true,
+        class: {
+          include: {
+            enrollments: {
+              include: {
+                student: {
+                  include: {
+                    user: {
+                      select: safeUserSelect,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -351,19 +365,46 @@ export class SubmissionsService {
 
     await this.assertCanManageClass(assignment.classId, currentUser);
 
-    return this.prisma.submission.findMany({
+    const submissions = await this.prisma.submission.findMany({
       where: { assignmentId },
-      include: {
-        student: {
-          include: {
-            user: {
-              select: safeUserSelect,
-            },
-          },
-        },
-      },
-      orderBy: [{ submittedAt: 'desc' }],
     });
+
+    const results = assignment.class.enrollments.map((enrollment) => {
+      const student = enrollment.student;
+      const sub = submissions.find((s) => s.studentId === student.id);
+
+      if (sub) {
+        return {
+          ...sub,
+          student,
+        };
+      }
+
+      return {
+        id: `not-submitted-${student.id}`,
+        assignmentId,
+        studentId: student.id,
+        fileName: null,
+        fileUrl: null,
+        note: null,
+        submittedAt: null,
+        status: 'NOT_SUBMITTED' as any,
+        score: null,
+        feedback: null,
+        student,
+      };
+    });
+
+    results.sort((a, b) => {
+      if (a.submittedAt && b.submittedAt) {
+        return new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime();
+      }
+      if (a.submittedAt) return -1;
+      if (b.submittedAt) return 1;
+      return (a.student?.user?.name || '').localeCompare(b.student?.user?.name || '');
+    });
+
+    return results;
   }
 
   async grade(
@@ -402,6 +443,86 @@ export class SubmissionsService {
         },
       },
     });
+  }
+
+  async gradeStudentDirectly(
+    assignmentId: string,
+    dto: { studentId: string; score: number; feedback?: string },
+    currentUser: { userId: string; role: string },
+  ) {
+    const assignment = await this.prisma.assignment.findUnique({
+      where: { id: assignmentId },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException('Tugas tidak ditemukan');
+    }
+
+    await this.assertCanManageClass(assignment.classId, currentUser);
+
+    const existing = await this.prisma.submission.findUnique({
+      where: {
+        assignmentId_studentId: {
+          assignmentId,
+          studentId: dto.studentId,
+        },
+      },
+    });
+
+    if (existing) {
+      return this.prisma.submission.update({
+        where: { id: existing.id },
+        data: {
+          score: dto.score,
+          feedback: dto.feedback?.trim(),
+          status: SubmissionStatus.REVIEWED,
+        },
+        include: {
+          assignment: true,
+          student: {
+            include: {
+              user: {
+                select: safeUserSelect,
+              },
+            },
+          },
+        },
+      });
+    } else {
+      const created = await this.prisma.submission.create({
+        data: {
+          assignmentId,
+          studentId: dto.studentId,
+          fileName: 'Diserahkan Kolektif / Fisik',
+          fileUrl: '/uploads/submissions/collective-placeholder.pdf',
+          status: SubmissionStatus.REVIEWED,
+          score: dto.score,
+          feedback: dto.feedback?.trim(),
+          submittedAt: new Date(),
+        },
+        include: {
+          assignment: true,
+          student: {
+            include: {
+              user: {
+                select: safeUserSelect,
+              },
+            },
+          },
+        },
+      });
+
+      await this.prisma.submissionLog.create({
+        data: {
+          submissionId: created.id,
+          studentId: dto.studentId,
+          action: 'SUBMITTED',
+          note: 'Dibuat otomatis oleh dosen (Kolektif/Fisik)',
+        },
+      });
+
+      return created;
+    }
   }
 
   private async assertCanManageClass(
