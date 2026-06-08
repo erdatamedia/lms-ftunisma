@@ -294,4 +294,50 @@ export class AssignmentsService {
 
     throw new ForbiddenException('Akses ditolak');
   }
+
+  async findMyAssignments(currentUser: { userId: string; role: string }) {
+    if (currentUser.role !== 'STUDENT') {
+      throw new ForbiddenException('Hanya mahasiswa yang dapat mengakses tugas ini');
+    }
+
+    const student = await this.prisma.student.findUnique({
+      where: { userId: currentUser.userId },
+      include: {
+        enrollments: {
+          select: {
+            classId: true,
+          },
+        },
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Profil mahasiswa tidak ditemukan');
+    }
+
+    const classIds = student.enrollments.map((e) => e.classId);
+
+    return this.prisma.assignment.findMany({
+      where: {
+        classId: {
+          in: classIds,
+        },
+      },
+      include: {
+        class: {
+          include: {
+            course: true,
+          },
+        },
+        meeting: true,
+        submissions: {
+          where: {
+            studentId: student.id,
+          },
+          orderBy: [{ submittedAt: 'desc' }],
+        },
+      },
+      orderBy: [{ dueDate: 'asc' }],
+    });
+  }
 }

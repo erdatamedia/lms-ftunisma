@@ -56,6 +56,11 @@ export class AssignmentsController {
     return this.assignmentsService.findByClass(classId, req.user);
   }
 
+  @Get('assignments/my')
+  findMy(@Req() req: { user: AuthenticatedUser }) {
+    return this.assignmentsService.findMyAssignments(req.user);
+  }
+
   @Get('assignments/:id')
   findOne(@Param('id') id: string, @Req() req: { user: AuthenticatedUser }) {
     return this.assignmentsService.findOne(id, req.user);

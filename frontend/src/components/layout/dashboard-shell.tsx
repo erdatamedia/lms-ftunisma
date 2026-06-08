@@ -6,7 +6,8 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth';
 import { useSearchStore } from '@/store/search';
 import { PageTransition } from './page-transition';
-import { API_URL } from '@/lib/api';
+import { api, API_URL } from '@/lib/api';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function IconHome({ className }: { className?: string }) {
   return (
@@ -101,6 +102,131 @@ function ThemeToggle({ theme, toggleTheme }: { theme: 'dark' | 'light'; toggleTh
   );
 }
 
+interface NotificationBellProps {
+  user: any;
+  notifications: any[];
+  setNotifications: React.Dispatch<React.SetStateAction<any[]>>;
+  showBellDropdown: boolean;
+  setShowBellDropdown: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+function NotificationBell({
+  user,
+  notifications,
+  setNotifications,
+  showBellDropdown,
+  setShowBellDropdown,
+}: NotificationBellProps) {
+  if (user?.role !== 'STUDENT') {
+    return (
+      <button
+        className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-slate-200/30 dark:bg-slate-800/30 text-slate-400 dark:text-slate-500 transition cursor-default"
+        type="button"
+        disabled
+      >
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+        </svg>
+      </button>
+    );
+  }
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setShowBellDropdown(!showBellDropdown)}
+        className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-slate-200/50 hover:bg-slate-200/80 dark:bg-slate-800/50 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-300 transition active:scale-95"
+        type="button"
+      >
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+        </svg>
+        {notifications.length > 0 && (
+          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900 animate-ping" />
+        )}
+        {notifications.length > 0 && (
+          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900" />
+        )}
+      </button>
+
+      <AnimatePresence>
+        {showBellDropdown && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setShowBellDropdown(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              className="absolute right-0 mt-2 w-72 sm:w-80 z-50 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 shadow-xl text-slate-800 dark:text-slate-100"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200/40 dark:border-slate-800/65">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Pemberitahuan ({notifications.length})</h4>
+                {notifications.length > 0 && (
+                  <button
+                    onClick={() => setNotifications([])}
+                    className="text-[10px] font-bold text-red-500 hover:text-red-700 transition"
+                    type="button"
+                  >
+                    Bersihkan Semua
+                  </button>
+                )}
+              </div>
+              <div className="mt-2 max-h-64 overflow-y-auto space-y-2.5 divide-y divide-slate-100 dark:divide-slate-900 pr-1 scrollbar-none">
+                {notifications.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
+                    Tidak ada notifikasi tugas baru atau tenggat.
+                  </div>
+                ) : (
+                  notifications.map((notif) => (
+                    <div
+                      key={notif.id}
+                      className="pt-2.5 first:pt-0 flex flex-col gap-1 transition-colors"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`rounded-full px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide leading-none ${
+                            notif.type === 'URGENT'
+                              ? 'bg-red-500/10 text-red-655 dark:text-red-400'
+                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                          }`}
+                        >
+                          {notif.type === 'URGENT' ? 'Tenggat' : 'Baru'}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          {new Date(notif.time).toLocaleDateString('id-ID', {
+                            day: '2-digit',
+                            month: 'short',
+                          })} {new Date(notif.time).toLocaleTimeString('id-ID', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-655 dark:text-slate-350 leading-relaxed font-semibold">
+                        {notif.message}
+                      </p>
+                      <Link
+                        href={notif.link}
+                        onClick={() => setShowBellDropdown(false)}
+                        className="text-[10px] font-extrabold text-accent hover:underline mt-0.5 inline-flex items-center gap-0.5"
+                      >
+                        Buka Kelas →
+                      </Link>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 interface NavItem {
   href: string;
   label: string;
@@ -138,6 +264,102 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     clearAuth();
     router.replace('/login');
   };
+
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showBellDropdown, setShowBellDropdown] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  useEffect(() => {
+    if (user?.role !== 'STUDENT') return;
+
+    const fetchAssignmentsAndNotify = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (!token) return;
+
+        const { data } = await api.get('/assignments/my', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const now = Date.now();
+        const computedNotifs: any[] = [];
+
+        data.forEach((assignment: any) => {
+          const isSubmitted = assignment.submissions && assignment.submissions.length > 0;
+          if (isSubmitted) return;
+
+          const dueTime = new Date(assignment.dueDate).getTime();
+          const diff = dueTime - now;
+          const createdTime = new Date(assignment.createdAt).getTime();
+          const age = now - createdTime;
+
+          // 1. Deadline Reminder (due in < 24 hours, but still in the future)
+          if (diff > 0 && diff < 24 * 60 * 60 * 1000) {
+            const hoursLeft = Math.max(0, Math.round(diff / (60 * 60 * 1000)));
+            computedNotifs.push({
+              id: `deadline-${assignment.id}`,
+              type: 'URGENT',
+              title: `Tenggat Tugas Dekat`,
+              message: `Tugas "${assignment.title}" (${assignment.class?.course?.name || ''}) berakhir dalam ${hoursLeft} jam!`,
+              link: `/student/classes/${assignment.classId}`,
+              time: new Date(assignment.dueDate),
+            });
+          }
+
+          // 2. New Assignment (created in the last 24 hours)
+          if (age > 0 && age < 24 * 60 * 60 * 1000) {
+            computedNotifs.push({
+              id: `new-${assignment.id}`,
+              type: 'NEW',
+              title: `Tugas Baru`,
+              message: `Tugas baru "${assignment.title}" telah diposting di kelas ${assignment.class?.course?.name || ''}.`,
+              link: `/student/classes/${assignment.classId}`,
+              time: new Date(assignment.createdAt),
+            });
+          }
+        });
+
+        // Sort notifications: URGENT first, then NEW, then by time descending
+        computedNotifs.sort((a, b) => {
+          if (a.type === 'URGENT' && b.type !== 'URGENT') return -1;
+          if (a.type !== 'URGENT' && b.type === 'URGENT') return 1;
+          return b.time.getTime() - a.time.getTime();
+        });
+
+        setNotifications(computedNotifs);
+
+        if (computedNotifs.length > 0) {
+          const hasShownToastThisSession = sessionStorage.getItem('hasShownReminderToast');
+          if (!hasShownToastThisSession) {
+            const urgentCount = computedNotifs.filter((n) => n.type === 'URGENT').length;
+            const newCount = computedNotifs.filter((n) => n.type === 'NEW').length;
+
+            let msg = '';
+            if (urgentCount > 0 && newCount > 0) {
+              msg = `Kamu memiliki ${urgentCount} tugas mendekati tenggat dan ${newCount} tugas baru!`;
+            } else if (urgentCount > 0) {
+              msg = `Kamu memiliki ${urgentCount} tugas mendekati tenggat (< 24 jam)!`;
+            } else {
+              msg = `Kamu memiliki ${newCount} tugas baru untuk dikerjakan!`;
+            }
+
+            setToastMessage(msg);
+            setShowToast(true);
+            sessionStorage.setItem('hasShownReminderToast', 'true');
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching assignments for notifications:', err);
+      }
+    };
+
+    fetchAssignmentsAndNotify();
+    const interval = setInterval(fetchAssignmentsAndNotify, 60000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+
 
   const allNavItems: NavItem[] =
     user?.role === 'ADMIN'
@@ -258,6 +480,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <NotificationBell
+              user={user}
+              notifications={notifications}
+              setNotifications={setNotifications}
+              showBellDropdown={showBellDropdown}
+              setShowBellDropdown={setShowBellDropdown}
+            />
             <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
             <button
               onClick={handleLogout}
@@ -300,13 +529,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               </svg>
             </button>
 
-            {/* Notification Bell with red badge */}
-            <button className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-slate-200/50 hover:bg-slate-200/80 dark:bg-slate-800/50 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-300 transition active:scale-95">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-              </svg>
-              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900" />
-            </button>
+            <NotificationBell
+              user={user}
+              notifications={notifications}
+              setNotifications={setNotifications}
+              showBellDropdown={showBellDropdown}
+              setShowBellDropdown={setShowBellDropdown}
+            />
 
             <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
             
@@ -372,6 +601,57 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           })}
         </div>
       </nav>
+
+      {/* Slide-In Toast Notification */}
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-50 max-w-sm w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-4 flex gap-3 items-start backdrop-blur-md"
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500 animate-pulse">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">Pemberitahuan Penting</h4>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-normal">{toastMessage}</p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowToast(false);
+                    setShowBellDropdown(true);
+                  }}
+                  className="rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-950 px-2.5 py-1 text-[10px] font-bold active:scale-95 transition-all shadow-sm"
+                  type="button"
+                >
+                  Lihat Detail
+                </button>
+                <button
+                  onClick={() => setShowToast(false)}
+                  className="rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 px-2.5 py-1 text-[10px] font-bold active:scale-95 transition-all"
+                  type="button"
+                >
+                  Abaikan
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowToast(false)}
+              className="text-slate-400 hover:text-slate-600 dark:text-slate-550 dark:hover:text-slate-350 shrink-0"
+              type="button"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

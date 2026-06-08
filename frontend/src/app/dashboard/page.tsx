@@ -293,15 +293,16 @@ export default function DashboardPage() {
   });
   const [lecturerClasses, setLecturerClasses] = useState<any[]>([]);
   const [studentProgress, setStudentProgress] = useState<any>(null);
-
+  const [studentAssignments, setStudentAssignments] = useState<any[]>([]);
+ 
   useEffect(() => {
     if (!isHydrated || !user) return;
-
+ 
     const run = async () => {
       try {
         setLoading(true);
         setError('');
-
+ 
         const token = localStorage.getItem('accessToken');
         if (!token) {
           clearAuth();
@@ -309,7 +310,7 @@ export default function DashboardPage() {
           return;
         }
         const headers = { Authorization: `Bearer ${token}` };
-
+ 
         if (user.role === 'ADMIN') {
           const [classesRes, coursesRes, lecturersRes, studentsRes] = await Promise.all([
             api.get('/classes', { headers }),
@@ -324,15 +325,19 @@ export default function DashboardPage() {
             students: studentsRes.data,
           });
         }
-
+ 
         if (user.role === 'LECTURER') {
           const classesRes = await api.get('/classes', { headers });
           setLecturerClasses(classesRes.data);
         }
-
+ 
         if (user.role === 'STUDENT') {
-          const progressRes = await api.get('/students/me/progress', { headers });
+          const [progressRes, assignmentsRes] = await Promise.all([
+            api.get('/students/me/progress', { headers }),
+            api.get('/assignments/my', { headers }),
+          ]);
           setStudentProgress(progressRes.data);
+          setStudentAssignments(assignmentsRes.data);
         }
       } catch (err: any) {
         if (err?.response?.status === 401) {
@@ -345,7 +350,7 @@ export default function DashboardPage() {
         setLoading(false);
       }
     };
-
+ 
     run();
   }, [user, isHydrated]);
 
@@ -443,28 +448,60 @@ export default function DashboardPage() {
     return list;
   }, [lecturerClasses, classFilter, searchQuery]);
 
+  const urgentAssignments = useMemo(() => {
+    if (user?.role !== 'STUDENT') return [];
+    return studentAssignments.filter((assignment) => {
+      const isSubmitted = assignment.submissions && assignment.submissions.length > 0;
+      if (isSubmitted) return false;
+      const dueTime = new Date(assignment.dueDate).getTime();
+      const diff = dueTime - Date.now();
+      return diff > 0 && diff < 24 * 60 * 60 * 1000;
+    });
+  }, [studentAssignments, user]);
+
   const upcomingEvents = useMemo<UpcomingEvent[]>(() => {
-    const events: UpcomingEvent[] = [];
-    const classes = studentProgress?.classes || [];
+    if (user?.role !== 'STUDENT') return [];
     
-    classes.forEach((item: any, idx: number) => {
+    const events: UpcomingEvent[] = [];
+    
+    // 1. Add actual upcoming assignments that are not submitted
+    studentAssignments.forEach((assignment) => {
+      const isSubmitted = assignment.submissions && assignment.submissions.length > 0;
+      if (isSubmitted) return;
+      const dueTime = new Date(assignment.dueDate).getTime();
+      if (dueTime < Date.now()) return; // Skip passed deadlines
+
+      const isUrgent = dueTime - Date.now() < 24 * 60 * 60 * 1000;
       events.push({
-        date: new Date(Date.now() + (idx + 1) * 24 * 60 * 60 * 1000), // dynamic offset
-        title: `Pertemuan ${idx + 2} - ${item.class?.course?.name}`,
-        category: 'Kelas',
-        color: 'bg-emerald-500'
-      });
-      events.push({
-        date: new Date(Date.now() + (idx + 2) * 24 * 60 * 60 * 1000),
-        title: `Tugas MK ${item.class?.course?.name}`,
+        date: new Date(assignment.dueDate),
+        title: `Tugas: ${assignment.title} — ${assignment.class?.course?.name}`,
         category: 'Tugas',
-        color: 'bg-amber-500'
+        color: isUrgent ? 'bg-red-500' : 'bg-amber-500'
       });
     });
-    
-    // Sort and limit to 4
-    return events.slice(0, 4);
-  }, [studentProgress]);
+
+    // 2. Add upcoming meeting class dates
+    const classes = studentProgress?.classes || [];
+    classes.forEach((classRow: any) => {
+      const meetings = classRow.class?.meetings || [];
+      meetings.forEach((meeting: any) => {
+        const meetTime = new Date(meeting.date).getTime();
+        if (meetTime >= Date.now()) {
+          events.push({
+            date: new Date(meeting.date),
+            title: `Pertemuan ${meeting.meetingNumber} - ${classRow.class?.course?.name}`,
+            category: 'Kelas',
+            color: 'bg-emerald-500'
+          });
+        }
+      });
+    });
+
+    // Sort by date ascending and take top 5
+    return events
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .slice(0, 5);
+  }, [studentAssignments, studentProgress, user]);
 
   // Icons
   const IconClass = (
@@ -528,6 +565,32 @@ export default function DashboardPage() {
                 {/* ── STUDENT VIEW ── */}
                 {user?.role === 'STUDENT' && (
                   <>
+                    {/* Urgent Deadlines Pulsating Banner */}
+                    {urgentAssignments.length > 0 && (
+                      <div className="relative overflow-hidden rounded-2xl border border-red-500/30 bg-red-500/10 dark:bg-red-500/5 p-4 text-red-650 dark:text-red-400 backdrop-blur-sm animate-pulse">
+                        <div className="flex items-start gap-3">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-500/20 text-red-650 dark:text-red-400">
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                          </span>
+                          <div>
+                            <h4 className="text-xs font-extrabold uppercase tracking-wider text-red-650 dark:text-red-450">Tenggat Waktu Mendesak! (Kurang dari 24 jam)</h4>
+                            <div className="mt-1.5 space-y-1">
+                              {urgentAssignments.map((assignment) => {
+                                const hoursLeft = Math.max(0, Math.round((new Date(assignment.dueDate).getTime() - Date.now()) / (60 * 60 * 1000)));
+                                return (
+                                  <p key={assignment.id} className="text-xs leading-normal">
+                                    Tugas <span className="font-bold">&quot;{assignment.title}&quot;</span> ({assignment.class?.course?.name}) akan berakhir dalam <span className="font-bold text-red-600 dark:text-red-400">{hoursLeft} jam</span>. Segera kumpulkan!
+                                  </p>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Resume Active Class Banner */}
                     {studentProgress?.classes?.length > 0 && (
                       <div className="premium-card rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-slate-300/10">

@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { api, getApiErrorMessage, API_URL } from '@/lib/api';
 import { motion } from 'framer-motion';
+import { useAuthStore } from '@/store/auth';
 import { MaterialSection } from '@/components/materials/material-section';
 import { AssignmentSection } from '@/components/assignments/assignment-section';
 import { AttendanceManager } from '@/components/attendance/attendance-manager';
@@ -46,6 +47,229 @@ function MeetingStatusBadge({ status }: { status: string }) {
   );
 }
 
+interface DiscussionSectionProps {
+  meetingId: string;
+}
+
+function DiscussionSection({ meetingId }: DiscussionSectionProps) {
+  const [messages, setMessages] = useState<any[]>([]);
+  const [newMsg, setNewMsg] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const currentUser = useAuthStore((state) => state.user);
+
+  const fetchDiscussions = async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      const token = localStorage.getItem('accessToken');
+      if (!token) return;
+
+      const { data } = await api.get(`/meetings/${meetingId}/discussions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMessages(data);
+      setError('');
+    } catch (err) {
+      if (!silent) setError(getApiErrorMessage(err));
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDiscussions();
+
+    // Auto polling every 10 seconds
+    const interval = setInterval(() => {
+      fetchDiscussions(true);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [meetingId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMsg.trim() || submitLoading) return;
+
+    try {
+      setSubmitLoading(true);
+      const token = localStorage.getItem('accessToken') || '';
+      const { data } = await api.post(
+        `/meetings/${meetingId}/discussions`,
+        { content: newMsg.trim() },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setMessages((prev) => [...prev, data]);
+      setNewMsg('');
+    } catch (err) {
+      alert(getApiErrorMessage(err));
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  const formatRoleBadge = (role: string) => {
+    if (role === 'LECTURER') {
+      return (
+        <span className="rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-emerald-605 dark:text-emerald-400">
+          Dosen
+        </span>
+      );
+    }
+    if (role === 'ADMIN') {
+      return (
+        <span className="rounded-md bg-purple-500/10 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-purple-650 dark:text-purple-400">
+          Admin
+        </span>
+      );
+    }
+    return (
+      <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        Mahasiswa
+      </span>
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-[480px]">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-150 dark:border-slate-800">
+        <div>
+          <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400">Forum Tanya Jawab Pertemuan</h5>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400">Diskusikan materi atau tugas sulit secara langsung.</p>
+        </div>
+        <button
+          onClick={() => fetchDiscussions(false)}
+          className="text-xs font-bold text-accent hover:underline flex items-center gap-1 active:scale-95 transition-all"
+          type="button"
+          disabled={loading}
+        >
+          <svg className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+          Segarkan
+        </button>
+      </div>
+
+      {error && (
+        <div className="my-2 rounded-xl bg-red-500/10 p-3 text-xs font-semibold text-red-650 dark:text-red-400">
+          {error}
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+        {loading && messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full gap-2">
+            <svg className="h-6 w-6 text-slate-400 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <span className="text-xs text-slate-400 font-semibold">Memuat diskusi kelas...</span>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-slate-450 dark:text-slate-500 gap-1.5 py-10">
+            <svg className="h-10 w-10 opacity-45" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            <p className="text-xs font-bold">Belum ada diskusi.</p>
+            <p className="text-[10px]">Tanyakan sesuatu atau mulai berdiskusi sekarang!</p>
+          </div>
+        ) : (
+          messages.map((msg) => {
+            const isMe = msg.user?.id === currentUser?.id;
+            return (
+              <div
+                key={msg.id}
+                className={`flex gap-3 items-start max-w-[85%] ${isMe ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
+              >
+                {msg.user?.avatarUrl ? (
+                  <img
+                    src={msg.user.avatarUrl.startsWith('http') ? msg.user.avatarUrl : `${API_URL}${msg.user.avatarUrl}`}
+                    alt={msg.user.name}
+                    className="h-8 w-8 rounded-full object-cover shrink-0 ring-2 ring-slate-100 dark:ring-slate-800"
+                  />
+                ) : (
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-green-600 font-bold text-white text-xs shadow-sm">
+                    {(msg.user?.name || '?')[0].toUpperCase()}
+                  </div>
+                )}
+
+                <div className={`flex flex-col gap-0.5 ${isMe ? 'items-end' : 'items-start'}`}>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200">
+                      {msg.user?.name}
+                    </span>
+                    {formatRoleBadge(msg.user?.role)}
+                  </div>
+
+                  <div
+                    className={`rounded-2xl px-4 py-2.5 text-xs leading-relaxed break-words max-w-full ${
+                      isMe
+                        ? 'bg-slate-900 text-white rounded-tr-none dark:bg-white dark:text-slate-950 shadow-sm border border-slate-900 dark:border-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-850 dark:text-slate-200 rounded-tl-none border border-slate-200/50 dark:border-slate-700/50'
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                  </div>
+
+                  <span className="text-[9px] text-slate-400 font-medium mt-0.5">
+                    {new Date(msg.createdAt).toLocaleDateString('id-ID', {
+                      day: '2-digit',
+                      month: 'short',
+                    })}{' '}
+                    {new Date(msg.createdAt).toLocaleTimeString('id-ID', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <form onSubmit={handleSubmit} className="mt-4 pt-3 border-t border-slate-150 dark:border-slate-800 flex gap-2">
+        <textarea
+          value={newMsg}
+          onChange={(e) => setNewMsg(e.target.value)}
+          placeholder="Tanyakan sesuatu tentang materi atau tugas ini..."
+          className="flex-1 rounded-xl border border-slate-250 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-3 text-xs text-slate-850 dark:text-slate-200 placeholder-slate-450 focus:border-accent focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-accent/15 transition-all resize-none h-11 min-h-[44px] max-h-24 scrollbar-none"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit(e);
+            }
+          }}
+        />
+        <button
+          type="submit"
+          disabled={!newMsg.trim() || submitLoading}
+          className="rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-950 px-4 font-bold text-xs hover:scale-[1.02] active:scale-95 transition-all shadow-sm flex items-center justify-center gap-1.5 h-11 disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100"
+        >
+          {submitLoading ? (
+            <svg className="h-4 w-4 animate-spin text-current" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+          ) : (
+            <svg className="h-4 w-4 rotate-90 transform text-current" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          )}
+          <span>Kirim</span>
+        </button>
+      </form>
+    </div>
+  );
+}
+
 interface MeetingDetailsProps {
   meeting: any;
   classId: string;
@@ -54,7 +278,7 @@ interface MeetingDetailsProps {
 }
 
 function MeetingDetails({ meeting, classId, canCreate, isStudent }: MeetingDetailsProps) {
-  const [activeTab, setActiveTab] = useState<'materials' | 'assignments' | 'attendance'>('materials');
+  const [activeTab, setActiveTab] = useState<'materials' | 'assignments' | 'attendance' | 'discussion'>('materials');
 
   return (
     <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-5 sm:px-5 bg-slate-50/10 dark:bg-slate-900/10">
@@ -95,6 +319,15 @@ function MeetingDetails({ meeting, classId, canCreate, isStudent }: MeetingDetai
               ),
             },
             {
+              id: 'discussion' as const,
+              label: 'Forum Diskusi',
+              icon: (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              ),
+            },
+            {
               id: 'attendance' as const,
               label: 'Presensi / Absensi',
               icon: (
@@ -125,7 +358,7 @@ function MeetingDetails({ meeting, classId, canCreate, isStudent }: MeetingDetai
       </div>
 
       {/* Tabs Content Card */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm min-h-[160px]">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-5 shadow-sm min-h-[160px]">
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 6 }}
@@ -150,6 +383,10 @@ function MeetingDetails({ meeting, classId, canCreate, isStudent }: MeetingDetai
                 isStudent={isStudent}
               />
             </>
+          )}
+
+          {activeTab === 'discussion' && (
+            <DiscussionSection meetingId={meeting.id} />
           )}
 
           {activeTab === 'attendance' && (
