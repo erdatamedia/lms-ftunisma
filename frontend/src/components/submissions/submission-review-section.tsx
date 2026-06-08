@@ -51,6 +51,74 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
   const [modalLogs, setModalLogs] = useState<any[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
 
+  const [inlineScores, setInlineScores] = useState<Record<string, string>>({});
+  const [inlineFeedbacks, setInlineFeedbacks] = useState<Record<string, string>>({});
+  const [savingAll, setSavingAll] = useState(false);
+
+  const isChanged = (item: any) => {
+    const currentScore = inlineScores[item.id] ?? '';
+    const dbScore = item.score !== null && item.score !== undefined ? String(item.score) : '';
+    const currentFeedback = inlineFeedbacks[item.id] ?? '';
+    const dbFeedback = item.feedback || '';
+    return currentScore !== dbScore || currentFeedback !== dbFeedback;
+  };
+
+  const handleSaveAll = async () => {
+    const changedItems = items.filter(isChanged);
+    if (changedItems.length === 0) return;
+
+    for (const item of changedItems) {
+      const scoreStr = inlineScores[item.id];
+      if (!scoreStr) {
+        alert(`Nilai untuk ${item.student?.user?.name || 'Mahasiswa'} wajib diisi jika diubah.`);
+        return;
+      }
+      const scoreNum = Number(scoreStr);
+      if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
+        alert(`Nilai untuk ${item.student?.user?.name || 'Mahasiswa'} harus berupa angka antara 0 - 100.`);
+        return;
+      }
+    }
+
+    try {
+      setSavingAll(true);
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        alert('Token tidak ditemukan.');
+        return;
+      }
+
+      await Promise.all(
+        changedItems.map(async (item) => {
+          const score = Number(inlineScores[item.id]);
+          const feedback = inlineFeedbacks[item.id] || '';
+          const isDirectGrade = item.id && item.id.startsWith('not-submitted-');
+
+          if (isDirectGrade) {
+            await api.post(
+              `/assignments/${assignmentId}/submissions/grade-student`,
+              { studentId: item.studentId, score, feedback },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+          } else {
+            await api.patch(
+              `/submissions/${item.id}/grade`,
+              { score, feedback },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+          }
+        })
+      );
+
+      await fetchSubmissions();
+      alert('Semua perubahan nilai berhasil disimpan!');
+    } catch (err) {
+      alert(getApiErrorMessage(err));
+    } finally {
+      setSavingAll(false);
+    }
+  };
+
   const fetchSubmissions = async () => {
     try {
       setLoading(true);
@@ -67,6 +135,15 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
       });
 
       setItems(data);
+
+      const scores: Record<string, string> = {};
+      const feedbacks: Record<string, string> = {};
+      data.forEach((sub: any) => {
+        scores[sub.id] = sub.score !== null && sub.score !== undefined ? String(sub.score) : '';
+        feedbacks[sub.id] = sub.feedback || '';
+      });
+      setInlineScores(scores);
+      setInlineFeedbacks(feedbacks);
 
       const token2 = localStorage.getItem('accessToken');
       if (token2 && data.length > 0) {
@@ -184,15 +261,17 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
     return true;
   });
 
+  const changedItems = items.filter(isChanged);
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
       {/* Header */}
-      <div className="border-b border-slate-200 px-4 py-3">
+      <div className="border-b border-slate-200 dark:border-slate-800 px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h5 className="font-semibold text-slate-900">Review Submission</h5>
+            <h5 className="font-semibold text-slate-900 dark:text-white">Review Submission</h5>
             {!loading && (
-              <p className="mt-0.5 text-xs text-slate-500">
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                 {gradedCount} sudah dinilai dari {items.length} submission
               </p>
             )}
@@ -208,12 +287,12 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
                 onClick={() => setFilter(f)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                   filter === f
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
                 {f === 'all' ? 'Semua' : f === 'ungraded' ? 'Belum Dinilai' : 'Sudah Dinilai'}
-                <span className="ml-1.5 rounded-full bg-white/20 px-1.5 py-0.5 text-[10px]">
+                <span className="ml-1.5 rounded-full bg-slate-900/10 dark:bg-white/20 px-1.5 py-0.5 text-[10px]">
                   {f === 'all'
                     ? items.length
                     : f === 'graded'
@@ -227,8 +306,29 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
       </div>
 
       <div className="p-4">
-        {loading && <p className="text-sm text-slate-500">Loading submission...</p>}
+        {loading && <p className="text-sm text-slate-500 dark:text-slate-400">Loading submission...</p>}
         {error && <p className="text-sm text-red-500">{error}</p>}
+
+        {/* Banner Simpan Semua */}
+        {changedItems.length > 0 && (
+          <div className="mb-4 flex items-center justify-between rounded-xl bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 p-3.5 text-green-800 dark:text-green-400">
+            <div className="flex items-center gap-2">
+              <svg className="h-5 w-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+              <span className="text-sm font-medium">
+                Terdapat {changedItems.length} perubahan nilai belum disimpan.
+              </span>
+            </div>
+            <button
+              onClick={handleSaveAll}
+              disabled={savingAll}
+              className="rounded-lg bg-green-600 dark:bg-green-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 dark:hover:bg-green-600 active:bg-green-800 dark:active:bg-green-700 disabled:opacity-50 transition"
+            >
+              {savingAll ? 'Menyimpan...' : 'Simpan Semua'}
+            </button>
+          </div>
+        )}
 
         {/* Desktop table */}
         {!loading && filteredItems.length > 0 && (
@@ -236,28 +336,44 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
             <div className="hidden md:block">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
                     <th className="pb-2 pr-4">Mahasiswa</th>
                     <th className="pb-2 pr-4">NIM</th>
                     <th className="pb-2 pr-4">Tgl Submit</th>
                     <th className="pb-2 pr-4">Status</th>
-                    <th className="pb-2 pr-4 text-right">Nilai</th>
+                    <th className="pb-2 pr-4 w-24">Nilai</th>
+                    <th className="pb-2 pr-4">Catatan / Feedback</th>
                     <th className="pb-2 text-right">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
                   {filteredItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50">
-                      <td className="py-3 pr-4 font-medium text-slate-900">
-                        <span>{item.student?.user?.name || '-'}</span>
+                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20">
+                      <td className="py-3 pr-4 font-medium text-slate-900 dark:text-white">
+                        <div className="flex items-center gap-1.5">
+                          <span>{item.student?.user?.name || '-'}</span>
+                          {item.fileUrl && (
+                            <a
+                              href={`${process.env.NEXT_PUBLIC_API_URL}${item.fileUrl}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              title={item.fileName || 'Download berkas'}
+                              className="text-slate-400 hover:text-red-500 transition"
+                            >
+                              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                              </svg>
+                            </a>
+                          )}
+                        </div>
                         {(logCounts[item.id] ?? 0) > 0 && (
-                          <span className="ml-2 inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-medium text-orange-700">
+                          <span className="mt-0.5 inline-flex items-center rounded bg-orange-100 dark:bg-orange-500/10 px-1.5 py-0.5 text-[10px] font-medium text-orange-700 dark:text-orange-400">
                             Diperbarui {logCounts[item.id]}×
                           </span>
                         )}
                       </td>
-                      <td className="py-3 pr-4 text-slate-500">{item.student?.nim || '-'}</td>
-                      <td className="py-3 pr-4 text-slate-500">
+                      <td className="py-3 pr-4 text-slate-500 dark:text-slate-400">{item.student?.nim || '-'}</td>
+                      <td className="py-3 pr-4 text-slate-500 dark:text-slate-400">
                         {item.submittedAt ? (
                           new Date(item.submittedAt).toLocaleDateString('id-ID', {
                             day: '2-digit',
@@ -266,17 +382,39 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
                             minute: '2-digit',
                           })
                         ) : (
-                          <span className="text-slate-400 font-normal">-</span>
+                          <span className="text-slate-400 dark:text-slate-500 font-normal">Belum kumpul</span>
                         )}
                       </td>
                       <td className="py-3 pr-4">{statusBadge(item.status, item.score)}</td>
-                      <td className="py-3 pr-4 text-right font-semibold text-slate-900">
-                        {item.score ?? '-'}
+                      <td className="py-3 pr-4">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          value={inlineScores[item.id] ?? ''}
+                          onChange={(e) =>
+                            setInlineScores((prev) => ({ ...prev, [item.id]: e.target.value }))
+                          }
+                          placeholder="-"
+                          className="w-16 rounded border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white px-2 py-1 text-center font-medium focus:border-slate-900 dark:focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-400 text-sm"
+                        />
+                      </td>
+                      <td className="py-3 pr-4">
+                        <input
+                          type="text"
+                          value={inlineFeedbacks[item.id] ?? ''}
+                          onChange={(e) =>
+                            setInlineFeedbacks((prev) => ({ ...prev, [item.id]: e.target.value }))
+                          }
+                          placeholder="Beri catatan..."
+                          className="w-full min-w-[120px] max-w-xs rounded border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white px-2 py-1 text-left focus:border-slate-900 dark:focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-400 text-sm"
+                        />
                       </td>
                       <td className="py-3 text-right">
                         <button
                           onClick={() => openModal(item)}
-                          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-900 hover:text-white hover:border-slate-900"
+                          className="rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 transition hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 hover:border-slate-900 dark:hover:border-white"
                         >
                           Review
                         </button>
@@ -289,52 +427,110 @@ export function SubmissionReviewSection({ assignmentId }: SubmissionReviewSectio
 
             {/* Mobile card list */}
             <div className="space-y-3 md:hidden">
-              {filteredItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-xl border border-slate-200 bg-slate-50 p-3"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <p className="truncate font-medium text-slate-900">
-                          {item.student?.user?.name || '-'}
+              {filteredItems.map((item) => {
+                const changed = isChanged(item);
+                return (
+                  <div
+                    key={item.id}
+                    className={`rounded-xl border p-3 transition ${
+                      changed
+                        ? 'border-amber-300 bg-amber-50/30 dark:border-amber-500/30 dark:bg-amber-500/5'
+                        : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <p className="truncate font-semibold text-slate-900 dark:text-white text-sm">
+                            {item.student?.user?.name || '-'}
+                          </p>
+                          {item.fileUrl && (
+                            <a
+                              href={`${process.env.NEXT_PUBLIC_API_URL}${item.fileUrl}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              title={item.fileName || 'Download berkas'}
+                              className="text-slate-400 hover:text-red-500 transition"
+                            >
+                              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                              </svg>
+                            </a>
+                          )}
+                          {(logCounts[item.id] ?? 0) > 0 && (
+                            <span className="inline-flex items-center rounded bg-orange-100 dark:bg-orange-500/10 px-1.5 py-0.5 text-[10px] font-medium text-orange-700 dark:text-orange-400">
+                              {logCounts[item.id]}×
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{item.student?.nim || '-'}</p>
+                        <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                          {item.submittedAt ? (
+                            new Date(item.submittedAt).toLocaleString('id-ID', {
+                              day: '2-digit',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          ) : (
+                            'Belum mengumpulkan'
+                          )}
                         </p>
-                        {(logCounts[item.id] ?? 0) > 0 && (
-                          <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-medium text-orange-700">
-                            Diperbarui {logCounts[item.id]}×
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5">
+                        {statusBadge(item.status, item.score)}
+                        {changed && (
+                          <span className="inline-flex items-center gap-1 rounded bg-amber-100 dark:bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400 animate-pulse">
+                            Belum Disimpan
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-500">{item.student?.nim || '-'}</p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        {item.submittedAt ? (
-                          new Date(item.submittedAt).toLocaleString('id-ID', {
-                            day: '2-digit',
-                            month: 'short',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })
-                        ) : (
-                          'Belum mengumpulkan'
-                        )}
-                      </p>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                      {statusBadge(item.status, item.score)}
-                      <span className="text-lg font-bold text-slate-900">
-                        {item.score ?? '-'}
-                      </span>
+
+                    {/* Score and Feedback Inputs */}
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      <div className="col-span-1">
+                        <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                          Nilai
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          value={inlineScores[item.id] ?? ''}
+                          onChange={(e) =>
+                            setInlineScores((prev) => ({ ...prev, [item.id]: e.target.value }))
+                          }
+                          placeholder="-"
+                          className="w-full rounded border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white px-2 py-1.5 text-center font-semibold focus:border-slate-900 dark:focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-400 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                          Catatan / Feedback
+                        </label>
+                        <input
+                          type="text"
+                          value={inlineFeedbacks[item.id] ?? ''}
+                          onChange={(e) =>
+                            setInlineFeedbacks((prev) => ({ ...prev, [item.id]: e.target.value }))
+                          }
+                          placeholder="Catatan..."
+                          className="w-full rounded border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white px-2.5 py-1.5 text-left focus:border-slate-900 dark:focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-400 text-sm"
+                        />
+                      </div>
                     </div>
+
+                    <button
+                      onClick={() => openModal(item)}
+                      className="mt-3 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 transition hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 hover:border-slate-900 dark:hover:border-white"
+                    >
+                      Detail Review
+                    </button>
                   </div>
-                  <button
-                    onClick={() => openModal(item)}
-                    className="mt-3 w-full rounded-lg border border-slate-200 bg-white py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-900 hover:text-white hover:border-slate-900"
-                  >
-                    Review & Beri Nilai
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}
