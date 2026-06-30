@@ -6,6 +6,9 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAssignmentDto } from './dto/create-assignment.dto';
+import { UpdateAssignmentDto } from './dto/update-assignment.dto';
+import { unlink } from 'fs/promises';
+import { join } from 'path';
 
 const safeUserSelect = {
   id: true,
@@ -192,6 +195,124 @@ export class AssignmentsService {
     await this.assertCanAccessClass(assignment.classId, currentUser);
 
     return assignment;
+  }
+
+  async update(
+    id: string,
+    dto: UpdateAssignmentDto,
+    file: Express.Multer.File | undefined,
+    currentUser: { userId: string; role: string },
+  ) {
+    const assignment = await this.prisma.assignment.findUnique({
+      where: { id },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException('Tugas tidak ditemukan');
+    }
+
+    await this.assertCanManageClass(assignment.classId, currentUser);
+
+    let meetingDate: Date | null = null;
+    const meetingId = dto.meetingId !== undefined ? dto.meetingId : assignment.meetingId;
+
+    if (meetingId) {
+      const meeting = await this.prisma.meeting.findUnique({
+        where: { id: meetingId },
+      });
+
+      if (!meeting || meeting.classId !== assignment.classId) {
+        throw new NotFoundException('Meeting tidak ditemukan pada class ini');
+      }
+
+      meetingDate = meeting.date;
+    }
+
+    const dueDate = dto.dueDate ? new Date(dto.dueDate) : assignment.dueDate;
+
+    if (meetingDate && dueDate < meetingDate) {
+      throw new BadRequestException(
+        'Deadline tugas tidak boleh lebih awal dari tanggal meeting',
+      );
+    }
+
+    if (dto.title && dto.title.trim().toLowerCase() !== assignment.title.toLowerCase()) {
+      const existing = await this.prisma.assignment.findFirst({
+        where: {
+          classId: assignment.classId,
+          meetingId: meetingId ?? null,
+          title: {
+            equals: dto.title.trim(),
+            mode: 'insensitive',
+          },
+          id: {
+            not: id,
+          },
+        },
+      });
+
+      if (existing) {
+        throw new BadRequestException(
+          'Tugas dengan judul tersebut sudah ada pada class/meeting ini',
+        );
+      }
+    }
+
+    let attachmentName = assignment.attachmentName;
+    let attachmentUrl = assignment.attachmentUrl;
+
+    if (file) {
+      if (assignment.attachmentUrl) {
+        const oldFilePath = join(process.cwd(), assignment.attachmentUrl);
+        await unlink(oldFilePath).catch(() => {});
+      }
+      attachmentName = file.originalname;
+      attachmentUrl = `/uploads/assignments/${file.filename}`;
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.assignment.update({
+        where: { id },
+        data: {
+          title: dto.title !== undefined ? dto.title.trim() : undefined,
+          description: dto.description !== undefined ? dto.description.trim() : undefined,
+          dueDate,
+          meetingId: dto.meetingId !== undefined ? dto.meetingId : undefined,
+          attachmentName,
+          attachmentUrl,
+        },
+        include: {
+          createdBy: {
+            select: safeUserSelect,
+          },
+          class: {
+            include: {
+              course: true,
+            },
+          },
+          meeting: true,
+        },
+      });
+
+      const submissions = await tx.submission.findMany({
+        where: { assignmentId: id },
+      });
+
+      for (const sub of submissions) {
+        if (sub.status !== 'REVIEWED') {
+          const isLate = sub.submittedAt > dueDate;
+          const newStatus = isLate ? 'LATE' : 'SUBMITTED';
+          if (sub.status !== newStatus) {
+            await tx.submission.update({
+              where: { id: sub.id },
+              data: { status: newStatus },
+            });
+          }
+        }
+      }
+
+      return updated;
+    });
   }
 
   async remove(id: string, currentUser: { userId: string; role: string }) {

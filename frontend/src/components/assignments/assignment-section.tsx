@@ -65,6 +65,13 @@ export function AssignmentSection({
   const [dueDate, setDueDate] = useState('');
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
+  // Editing state variables
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editAttachmentFile, setEditAttachmentFile] = useState<File | null>(null);
+
   const [submitForms, setSubmitForms] = useState<
     Record<string, { note?: string; file?: File | null }>
   >({});
@@ -150,6 +157,75 @@ export function AssignmentSection({
       setError(getApiErrorMessage(err));
     } finally {
       setSubmitLoading(false);
+    }
+  };
+
+  const startEdit = (item: any) => {
+    setEditingId(item.id);
+    setEditTitle(item.title);
+    setEditDescription(item.description || '');
+    const date = new Date(item.dueDate);
+    const localDateTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+    setEditDueDate(localDateTime);
+    setEditAttachmentFile(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditTitle('');
+    setEditDescription('');
+    setEditDueDate('');
+    setEditAttachmentFile(null);
+  };
+
+  const handleUpdate = async (id: string, e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      setSubmitLoading(true);
+      setError('');
+
+      const token = localStorage.getItem('accessToken');
+      if (!token) { setError('Token tidak ditemukan. Silakan login ulang.'); return; }
+
+      const formData = new FormData();
+      formData.append('title', editTitle);
+      if (editDescription) formData.append('description', editDescription);
+      formData.append('dueDate', new Date(editDueDate).toISOString());
+      if (editAttachmentFile) formData.append('file', editAttachmentFile);
+
+      await api.patch(`/assignments/${id}`, formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      cancelEdit();
+      await fetchAssignments();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus tugas ini? Semua submission terkait juga akan dihapus.')) {
+      return;
+    }
+
+    try {
+      setError('');
+      const token = localStorage.getItem('accessToken');
+      if (!token) { setError('Token tidak ditemukan. Silakan login ulang.'); return; }
+
+      await api.delete(`/assignments/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      await fetchAssignments();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
     }
   };
 
@@ -380,6 +456,76 @@ export function AssignmentSection({
             ? item.submissions?.find((s: any) => s.studentId === studentId)
             : item.submissions?.[0];
           const deadlinePassed = isDeadlinePassed(item.dueDate);
+          const isEditing = editingId === item.id;
+
+          if (isEditing) {
+            return (
+              <form
+                key={item.id}
+                onSubmit={(e) => handleUpdate(item.id, e)}
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-4"
+              >
+                <p className="font-semibold text-slate-900 text-sm">Edit Tugas / Deadline</p>
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-500">Judul Tugas *</label>
+                    <input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white"
+                      placeholder="Judul tugas"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-500">Deskripsi Tugas</label>
+                    <textarea
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      className="min-h-[80px] w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white"
+                      placeholder="Deskripsi tugas"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-500">Deadline *</label>
+                    <input
+                      type="datetime-local"
+                      value={editDueDate}
+                      onChange={(e) => setEditDueDate(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white"
+                      required
+                    />
+                  </div>
+                  
+                  <PdfDropzone
+                    label="Ganti Berkas PDF Tugas (Kosongkan jika tidak ingin diganti)"
+                    file={editAttachmentFile}
+                    onFileChange={setEditAttachmentFile}
+                  />
+                </div>
+                
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={submitLoading}
+                    className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                  >
+                    {submitLoading ? 'Menyimpan...' : 'Simpan'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Batal
+                  </button>
+                </div>
+              </form>
+            );
+          }
 
           return (
             <div
@@ -426,9 +572,31 @@ export function AssignmentSection({
               {isStudent && renderSubmissionForm(item)}
 
               {canCreate && !isStudent && (
-                <div className="mt-4">
-                  <SubmissionReviewSection assignmentId={item.id} />
-                </div>
+                <>
+                  <div className="mt-4">
+                    <SubmissionReviewSection assignmentId={item.id} />
+                  </div>
+                  <div className="mt-4 flex gap-2 justify-end border-t border-slate-200/50 pt-4">
+                    <button
+                      onClick={() => startEdit(item)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-[0.98] transition shadow-sm"
+                    >
+                      <svg className="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                      Edit Deadline / Tugas
+                    </button>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50/50 px-3 py-2 text-xs font-semibold text-red-650 hover:bg-red-100/70 active:scale-[0.98] transition"
+                    >
+                      <svg className="h-3.5 w-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Hapus
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           );

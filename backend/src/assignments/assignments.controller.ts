@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Req,
   UploadedFile,
@@ -22,6 +23,7 @@ import {
 } from '../common/upload/pdf-upload.util';
 import { AssignmentsService } from './assignments.service';
 import { CreateAssignmentDto } from './dto/create-assignment.dto';
+import { UpdateAssignmentDto } from './dto/update-assignment.dto';
 import { AuthenticatedUser } from '../auth/auth-user.interface';
 
 @UseGuards(JwtAuthGuard)
@@ -64,6 +66,25 @@ export class AssignmentsController {
   @Get('assignments/:id')
   findOne(@Param('id') id: string, @Req() req: { user: AuthenticatedUser }) {
     return this.assignmentsService.findOne(id, req.user);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.LECTURER)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: pdfStorage('uploads/assignments'),
+      fileFilter: pdfFileFilter,
+      limits: pdfLimits,
+    }),
+  )
+  @Patch('assignments/:id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateAssignmentDto,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() req: { user: AuthenticatedUser },
+  ) {
+    return this.assignmentsService.update(id, dto, file, req.user);
   }
 
   @UseGuards(RolesGuard)

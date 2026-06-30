@@ -8,12 +8,15 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { OpenAttendanceSessionDto } from './dto/open-attendance-session.dto';
 import { ScanAttendanceDto } from './dto/scan-attendance.dto';
+import { UpdateManualAttendanceDto } from './dto/update-manual-attendance.dto';
+import { AttendanceSessionType } from '@prisma/client';
 
 const safeUserSelect = {
   id: true,
   name: true,
   email: true,
   role: true,
+  avatarUrl: true,
   createdAt: true,
   updatedAt: true,
 };
@@ -302,6 +305,150 @@ export class AttendanceService {
         updatedAt: item.attendanceSession.updatedAt,
       },
     }));
+  }
+
+  async getManualAttendanceList(
+    meetingId: string,
+    currentUser: { userId: string; role: string },
+  ) {
+    const meeting = await this.prisma.meeting.findUnique({
+      where: { id: meetingId },
+    });
+
+    if (!meeting) {
+      throw new NotFoundException('Meeting tidak ditemukan');
+    }
+
+    await this.assertCanManageClass(meeting.classId, currentUser);
+
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: { classId: meeting.classId, status: 'ACTIVE' },
+      include: {
+        student: {
+          include: {
+            user: { select: safeUserSelect },
+          },
+        },
+      },
+      orderBy: {
+        student: {
+          user: { name: 'asc' }
+        }
+      }
+    });
+
+    const sessions = await this.prisma.attendanceSession.findMany({
+      where: { meetingId },
+      include: {
+        attendances: true,
+      },
+    });
+
+    const entrySession = sessions.find((s) => s.type === 'ENTRY');
+    const exitSession = sessions.find((s) => s.type === 'EXIT');
+
+    return enrollments.map((e) => {
+      const student = e.student;
+      const isEntryPresent = entrySession
+        ? entrySession.attendances.some((a) => a.studentId === student.id)
+        : false;
+      const isExitPresent = exitSession
+        ? exitSession.attendances.some((a) => a.studentId === student.id)
+        : false;
+
+      return {
+        studentId: student.id,
+        name: student.user.name,
+        nim: student.nim,
+        avatarUrl: student.user.avatarUrl,
+        entry: isEntryPresent,
+        exit: isExitPresent,
+      };
+    });
+  }
+
+  async updateManualAttendance(
+    meetingId: string,
+    dto: UpdateManualAttendanceDto,
+    currentUser: { userId: string; role: string },
+  ) {
+    const meeting = await this.prisma.meeting.findUnique({
+      where: { id: meetingId },
+    });
+
+    if (!meeting) {
+      throw new NotFoundException('Meeting tidak ditemukan');
+    }
+
+    await this.assertCanManageClass(meeting.classId, currentUser);
+
+    const enrollment = await this.prisma.enrollment.findUnique({
+      where: {
+        classId_studentId: {
+          classId: meeting.classId,
+          studentId: dto.studentId,
+        },
+      },
+    });
+
+    if (!enrollment) {
+      throw new BadRequestException('Mahasiswa tidak terdaftar di kelas ini');
+    }
+
+    let session = await this.prisma.attendanceSession.findFirst({
+      where: { meetingId, type: dto.type },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!session) {
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      session = await this.prisma.attendanceSession.create({
+        data: {
+          meetingId,
+          type: dto.type,
+          qrToken: `manual:${meetingId}:${dto.type}:${randomUUID()}`,
+          expiresAt,
+          isActive: false,
+        },
+      });
+    }
+
+    if (dto.present) {
+      const existing = await this.prisma.attendance.findUnique({
+        where: {
+          attendanceSessionId_studentId: {
+            attendanceSessionId: session.id,
+            studentId: dto.studentId,
+          },
+        },
+      });
+
+      if (!existing) {
+        await this.prisma.attendance.create({
+          data: {
+            attendanceSessionId: session.id,
+            studentId: dto.studentId,
+            deviceInfo: 'Manual by Lecturer',
+            ipAddress: 'N/A',
+          },
+        });
+      }
+    } else {
+      const sessions = await this.prisma.attendanceSession.findMany({
+        where: { meetingId, type: dto.type },
+        select: { id: true },
+      });
+      const sessionIds = sessions.map((s) => s.id);
+
+      await this.prisma.attendance.deleteMany({
+        where: {
+          attendanceSessionId: { in: sessionIds },
+          studentId: dto.studentId,
+        },
+      });
+    }
+
+    return { success: true };
   }
 
   private async assertCanManageClass(

@@ -10,6 +10,7 @@ import { AttendanceManager } from '@/components/attendance/attendance-manager';
 import { AttendanceScanner } from '@/components/attendance/attendance-scanner';
 import { MyAttendanceList } from '@/components/attendance/my-attendance-list';
 import { MeetingAttendanceReport } from '@/components/attendance/meeting-attendance-report';
+import { ManualAttendanceEditor } from '@/components/attendance/manual-attendance-editor';
 import { PageCard } from '@/components/ui/page-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { StatusMessage } from '@/components/ui/status-message';
@@ -396,6 +397,9 @@ function MeetingDetails({ meeting, classId, canCreate, isStudent }: MeetingDetai
                 <div className="space-y-5">
                   <AttendanceManager meetingId={meeting.id} />
                   <MeetingAttendanceReport meetingId={meeting.id} />
+                  <div className="border-t border-slate-150 dark:border-slate-800 pt-6">
+                    <ManualAttendanceEditor meetingId={meeting.id} />
+                  </div>
                 </div>
               )}
               {isStudent && (

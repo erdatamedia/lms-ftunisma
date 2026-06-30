@@ -15,6 +15,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { AttendanceService } from './attendance.service';
 import { OpenAttendanceSessionDto } from './dto/open-attendance-session.dto';
 import { ScanAttendanceDto } from './dto/scan-attendance.dto';
+import { UpdateManualAttendanceDto } from './dto/update-manual-attendance.dto';
 import { AuthenticatedUser } from '../auth/auth-user.interface';
 
 @UseGuards(JwtAuthGuard)
@@ -58,6 +59,27 @@ export class AttendanceController {
     @Req() req: Request & { user: AuthenticatedUser },
   ) {
     return this.attendanceService.getMeetingAttendance(meetingId, req.user);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.LECTURER)
+  @Get('meetings/:meetingId/attendance/manual')
+  getManualAttendanceList(
+    @Param('meetingId') meetingId: string,
+    @Req() req: Request & { user: AuthenticatedUser },
+  ) {
+    return this.attendanceService.getManualAttendanceList(meetingId, req.user);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.LECTURER)
+  @Post('meetings/:meetingId/attendance/manual')
+  updateManualAttendance(
+    @Param('meetingId') meetingId: string,
+    @Body() dto: UpdateManualAttendanceDto,
+    @Req() req: Request & { user: AuthenticatedUser },
+  ) {
+    return this.attendanceService.updateManualAttendance(meetingId, dto, req.user);
   }
 
   @UseGuards(RolesGuard)
